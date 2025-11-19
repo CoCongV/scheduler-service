@@ -1,49 +1,39 @@
 from datetime import datetime
 
-import orm
-
-from scheduler_service import pg_db
-from . import metadata
-from .mixin import CRUDMixin
+from tortoise.models import Model
+from tortoise import fields
 
 
-class Task(orm.Model, CRUDMixin):
-    __tablename__ = 'task'
-    __metadata__ = metadata
-    __database__ = pg_db
+class Task(Model):
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=32)
+    interval = fields.IntField(null=True)  # 存储间隔多少秒
+    random_interval_seconds_min = fields.IntField(null=True)  # 最小浮动时间
+    random_interval_seconds_max = fields.IntField(null=True)  # 最大浮动时间
+    start_time = fields.DatetimeField(auto_now_add=True)
 
-    id = orm.Integer(primary_key=True)
-    name = orm.String(max_length=32)
-    interval = orm.Integer(allow_null=True)
-    start_time = orm.DateTime(default=datetime.utcnow)
-    cookies = orm.JSON(allow_null=True)
-
-    user_id = orm.Integer()
-
+    # 定义与User的外键关系
+    user = fields.ForeignKeyField('models.User', related_name='tasks', source_field='user_id')
 
     def to_dict(self) -> dict:
         return {
             "id": self.id,
             "name": self.name,
-            "email": self.interval,
+            "interval": self.interval,
+            "random_interval_seconds_min": self.random_interval_seconds_min,
+            "random_interval_seconds_max": self.random_interval_seconds_max,
             "start_time": self.start_time,
-            "cookies": self.cookies
-        }    
+            "user_id": self.user.id
+        }
 
 
-class URLDetail(orm.Model, CRUDMixin):
-    __tablename__ = 'url_detail'
-    __metadata__ = metadata
-    __database__ = pg_db
+class URLDetail(Model):
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=32)
+    request_url = fields.CharField(max_length=128)
+    callback_url = fields.CharField(max_length=128)
+    params = fields.JSONField(default=dict)
+    cookies = fields.JSONField(null=True)  # 从Task模型迁移过来的cookies字段
 
-    id = orm.Integer(primary_key=True)
-    name = orm.String(max_length=32)
-    request_url = orm.String(max_length=128)
-    callback_url = orm.String(max_length=128)
-    params = orm.JSON()
-
-    task_id = orm.Integer()
-
-# class Response(Document):
-#     time = DateTimeField(default=datetime.now)
-#     body = JsonField()
+    # 定义与Task的外键关系
+    task = fields.ForeignKeyField('models.Task', related_name='url_details', source_field='task_id')

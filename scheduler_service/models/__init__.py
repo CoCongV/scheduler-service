@@ -1,7 +1,4 @@
-import sqlalchemy
-
-metadata = sqlalchemy.MetaData()
-
+# Tortoise-ORM models initialization
 
 from .user import User
 from .task import Task, URLDetail

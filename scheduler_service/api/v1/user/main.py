@@ -35,7 +35,13 @@ class UserApi(Resource):
 
     async def patch(self, request, user: User):
         args = user_parse_patch.parse_args(request)
-        await user.update(**args)
+        # 在Tortoise-ORM中，update是类方法，需要更新特定字段
+        update_data = {}
+        if 'password' in args:
+            update_data['password_hash'] = User.hash_password(args.pop('password'))
+        update_data.update(args)
+        if update_data:
+            await User.filter(id=user.id).update(**update_data)
         return user.to_dict()
 
     async def delete(self, request, user: User):

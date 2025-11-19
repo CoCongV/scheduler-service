@@ -1,31 +1,23 @@
 from datetime import datetime
-import time
 
 import jwt
 from passlib.hash import pbkdf2_sha256
-import orm
+from tortoise.models import Model
+from tortoise import fields
 from sanic import Sanic
 
-from scheduler_service import pg_db
-from . import metadata
-from .mixin import CRUDMixin
 
-
-class User(orm.Model, CRUDMixin):
-    __tablename__ = 'user'
-    __metadata__ = metadata
-    __database__ = pg_db
-
-    id = orm.Integer(primary_key=True)
-    name = orm.String(max_length=32)
-    password_hash = orm.String(max_length=256)
-    email = orm.String(max_length=32)
-    verify = orm.Boolean(default=False)
-    register_time = orm.DateTime(default=datetime.now)
-    login_time = orm.DateTime(allow_null=True)
+class User(Model):
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=32)
+    password_hash = fields.CharField(max_length=256)
+    email = fields.CharField(max_length=32)
+    verify = fields.BooleanField(default=False)
+    register_time = fields.DatetimeField(auto_now_add=True)
+    login_time = fields.DatetimeField(null=True)
 
     async def ping(self):
-        await self.update(login_time=time.time())
+        await self.update(login_time=datetime.now())
 
     @property
     def password(self):
@@ -48,7 +40,7 @@ class User(orm.Model, CRUDMixin):
                           algorithm='HS256').decode()
 
     @classmethod
-    async def verify_auth_token(cls, app: Sanic, token: str) -> bool:
+    async def verify_auth_token(cls, app: Sanic, token: str):
         try:
             data = jwt.decode(token,
                               app.config['SECRET_KEY'],
@@ -58,7 +50,10 @@ class User(orm.Model, CRUDMixin):
         else:
             if data['flag'] != 'auth':
                 return False
-            return await cls.objects.get(id=data['id'])
+            try:
+                return await cls.get(id=data['id'])
+            except cls.DoesNotExist:
+                return False
 
     def to_dict(self) -> dict:
         return {

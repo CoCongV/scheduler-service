@@ -9,9 +9,8 @@ dependencies = [
     "sanic~=21.3",
     "aioredis~=1.3",
     "click~=8.0",
-    "databases~=0.4",
     "asyncpg~=0.23",
-    "orm~=0.1",
+    "tortoise-orm~=0.20.0",
     "passlib~=1.7",
     "pyjwt~=2.1",
     "arq~=0.20",
@@ -22,16 +21,13 @@ dependencies = [
     "aiodns~=3.0",
     "brotlipy~=0.7",
     "sanic-restful~=0.1",
-    "Ipython~=7.24",
-    "nose~=1.3",
-    "psycopg2~=2.9",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.8,<4.0"
 dynamic = ["classifiers"]
 license = {text = "MIT"}
 
 [project.urls]
-homepage = ""
+homepage = "https://github.com/CoCongV/scheduler-service#"
 
 
 [project.optional-dependencies]

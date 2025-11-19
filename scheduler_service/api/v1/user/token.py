@@ -1,4 +1,4 @@
-from orm.exceptions import NoMatch
+from tortoise.exceptions import DoesNotExist
 from sanic.exceptions import InvalidUsage, Unauthorized
 from sanic.log import logger
 from sanic_restful import Resource, reqparse
@@ -23,7 +23,7 @@ class AuthTokenApi(Resource):
                 user = await User.objects.get(email=args.email)
             else:
                 raise InvalidUsage("Input Username or Email, Please")
-        except NoMatch:
+        except DoesNotExist:
             raise Unauthorized("Username or Password is incorrect")
         if not user.verify_password(args.password):
             raise Unauthorized("Username or Password is incorrect")

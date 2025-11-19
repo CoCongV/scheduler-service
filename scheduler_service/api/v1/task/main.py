@@ -59,7 +59,7 @@ class TaskApi(Resource):
         }
 
     async def post(self, request: Request, user: User, task_id: int):
-        urls = await URLDetail.objects.filter(id=task_id)
+        urls = await URLDetail.objects.filter(id=task_id).all()
         if len(urls) >= request.app.config['MAX_URLS']:
             raise InvalidUsage("NUMBER OF URLS EXCEEDS THE LIMIT")
         params = task_parse.parse_args(request)
@@ -70,7 +70,7 @@ class TaskApi(Resource):
             params=params.params,
             task_id=task_id)
         return {
-            'url_id': url_detail
+            'url_id': url_detail.id
         }
 
     async def delete(self, request: Request, user: User, task_id: int):
