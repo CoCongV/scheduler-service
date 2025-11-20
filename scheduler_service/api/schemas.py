@@ -1,6 +1,9 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, Literal
+from pydantic import BaseModel, validator
+
+# 定义有效的HTTP方法
+VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
 
 class TaskCreate(BaseModel):
@@ -18,6 +21,13 @@ class URLDetailCreate(BaseModel):
     name: Optional[str] = None
     payload: Optional[dict] = None  # 从params更新为payload
     header: Optional[dict] = None  # 添加header字段
+    method: Optional[Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']] = 'GET'  # HTTP请求方法
+    
+    @validator('method')
+    def validate_method(cls, v):
+        if v and v.upper() not in VALID_HTTP_METHODS:
+            raise ValueError(f"Invalid HTTP method: {v}. Must be one of {VALID_HTTP_METHODS}")
+        return v.upper()
 
 
 class TaskResponse(BaseModel):

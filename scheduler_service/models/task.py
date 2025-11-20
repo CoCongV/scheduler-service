@@ -1,7 +1,10 @@
 from datetime import datetime
-
+from typing import List
 from tortoise.models import Model
-from tortoise import fields
+from tortoise import fields, Tortoise
+
+# 定义有效的HTTP方法列表
+VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
 
 class Task(Model):
@@ -36,6 +39,15 @@ class URLDetail(Model):
     name = fields.CharField(max_length=32)
     payload = fields.JSONField(default=dict)
     header = fields.JSONField(null=True)  # HTTP请求头字段
+    method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法，默认GET
 
     # 定义与Task的外键关系
     task = fields.ForeignKeyField('models.Task', related_name='url_details', source_field='task_id')
+    
+    async def save(self, *args, **kwargs):
+        # 验证method是否是有效的HTTP方法
+        if self.method and self.method.upper() not in VALID_HTTP_METHODS:
+            raise ValueError(f"Invalid HTTP method: {self.method}. Must be one of {VALID_HTTP_METHODS}")
+        # 保存前转换为大写
+        self.method = self.method.upper()
+        await super().save(*args, **kwargs)
