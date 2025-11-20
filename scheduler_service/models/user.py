@@ -4,7 +4,6 @@ import jwt
 from passlib.hash import pbkdf2_sha256
 from tortoise.models import Model
 from tortoise import fields
-from sanic import Sanic
 
 
 class User(Model):

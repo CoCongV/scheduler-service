@@ -1,11 +1,13 @@
-import click
 import os
 import sys
 import logging
+
+import click
+from tortoise import run_async
+
 from scheduler_service.main import create_app
 from scheduler_service.config import configs
 from scheduler_service.models import User
-from tortoise import metadata, run_async
 from scheduler_service import setup_tortoise, close_tortoise
 
 

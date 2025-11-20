@@ -3,6 +3,7 @@ from fastapi import APIRouter
 
 from scheduler_service.api.v1 import task, user
 
+
 def setup_routes(app):
     """设置路由"""
     # 创建API路由器

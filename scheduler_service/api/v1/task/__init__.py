@@ -7,8 +7,7 @@ from .main import (
     create_url_detail,
     delete_task
 )
-# 导出schemas中的模型，确保包结构完整
-from . import schemas
+
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 

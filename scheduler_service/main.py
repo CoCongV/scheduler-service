@@ -67,7 +67,7 @@ async def setup_dbs(app: FastAPI):
     db_url = app.config.get('POSTGRES_URL') or app.config.get('PG_URL') or app.config.get('DB_URL')
     if not db_url:
         raise ValueError("PostgreSQL数据库URL未配置，请设置POSTGRES_URL、PG_URL或DB_URL")
-    
+
     # PostgreSQL - Tortoise ORM (使用官方实现)
     register_tortoise(
         app=app,
