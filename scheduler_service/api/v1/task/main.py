@@ -62,7 +62,9 @@ async def create_url_detail(
     # 创建URL详情
     url_detail = await URLDetail.create(
         name=url_data.name,
-        params=url_data.params,
+        payload=url_data.payload,
+        header=url_data.header,
+        method=url_data.method,
         task_id=task_id
     )
     return {
