@@ -14,6 +14,7 @@ class TaskCreate(BaseModel):
     header: Optional[dict] = None  # 从cookies更新为header
     request_url: str
     callback_url: Optional[str] = None
+    callback_token: Optional[str] = None  # 用于callback_url登录的token
 
 
 class URLDetailCreate(BaseModel):
@@ -39,6 +40,7 @@ class TaskResponse(BaseModel):
     start_time: datetime
     request_url: str
     callback_url: Optional[str]
+    callback_token: Optional[str] = None  # 用于callback_url登录的token
     
     class Config:
         orm_mode = True

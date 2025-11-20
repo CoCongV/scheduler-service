@@ -16,6 +16,7 @@ class Task(Model):
     start_time = fields.DatetimeField(auto_now_add=True)
     request_url = fields.CharField(max_length=128)
     callback_url = fields.CharField(max_length=128)
+    callback_token = fields.CharField(max_length=64, null=True)  # 用于callback_url登录的token
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField('models.User', related_name='tasks', source_field='user_id')
@@ -30,7 +31,8 @@ class Task(Model):
             "start_time": self.start_time,
             "user_id": self.user.id if self.user else None,
             "request_url": self.request_url,
-            "callback_url": self.callback_url
+            "callback_url": self.callback_url,
+            "callback_token": self.callback_token
         }
 
 

@@ -23,7 +23,8 @@ async def create_task(task_data: TaskCreate, current_user: User = Depends(login_
         user_id=current_user.id,
         start_time=datetime.fromtimestamp(task_data.start_time),
         request_url=task_data.request_url,
-        callback_url=task_data.callback_url
+        callback_url=task_data.callback_url,
+        callback_token=task_data.callback_token  # 从请求中读取callback_token
     )
     return {
         'task_id': task.id
