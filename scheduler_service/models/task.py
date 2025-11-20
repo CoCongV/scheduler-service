@@ -11,6 +11,8 @@ class Task(Model):
     random_interval_seconds_min = fields.IntField(null=True)  # 最小浮动时间
     random_interval_seconds_max = fields.IntField(null=True)  # 最大浮动时间
     start_time = fields.DatetimeField(auto_now_add=True)
+    request_url = fields.CharField(max_length=128)
+    callback_url = fields.CharField(max_length=128)
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField('models.User', related_name='tasks', source_field='user_id')
@@ -23,15 +25,15 @@ class Task(Model):
             "random_interval_seconds_min": self.random_interval_seconds_min,
             "random_interval_seconds_max": self.random_interval_seconds_max,
             "start_time": self.start_time,
-            "user_id": self.user.id
+            "user_id": self.user.id if self.user else None,
+            "request_url": self.request_url,
+            "callback_url": self.callback_url
         }
 
 
 class URLDetail(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=32)
-    request_url = fields.CharField(max_length=128)
-    callback_url = fields.CharField(max_length=128)
     params = fields.JSONField(default=dict)
     cookies = fields.JSONField(null=True)  # 从Task模型迁移过来的cookies字段
 

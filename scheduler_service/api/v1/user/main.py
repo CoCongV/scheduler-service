@@ -1,48 +1,99 @@
-from sanic.exceptions import InvalidUsage, Unauthorized
-from sanic_restful import Resource, reqparse
-
+from pydantic import BaseModel, EmailStr
+from fastapi import HTTPException, status, Depends
 from scheduler_service.api.decorators import login_require
 from scheduler_service.models import User
 
-user_parse_post = reqparse.RequestParser()
-user_parse_post.add_argument("name", required=True)
-user_parse_post.add_argument("password", required=True)
-user_parse_post.add_argument("email", required=True)
 
-user_parse_patch = reqparse.RequestParser()
-user_parse_patch.add_argument("name", store_missing=False)
-user_parse_patch.add_argument("email", store_missing=False)
-user_parse_patch.add_argument("password", store_missing=False)
+# Pydantic模型
+def to_camel(string: str) -> str:
+    """将snake_case转换为camelCase"""
+    components = string.split('_')
+    return components[0] + ''.join(x.title() for x in components[1:])
 
 
-class UserApi(Resource):
-    method_decorators = {
-        "get": login_require,
-        "patch": login_require,
-        "delete": login_require
-    }
+class UserCreate(BaseModel):
+    """用户创建模型"""
+    name: str
+    password: str
+    email: EmailStr
 
-    async def post(self, request):
-        args = user_parse_post.parse_args(request)
-        password_hash = User.hash_password(args.password)
-        user = await User.objects.create(name=args.name,
-                                         password_hash=password_hash,
-                                         email=args.email)
-        return {'uid': user.id}, 201
 
-    async def get(self, request, user: User):
-        return user.to_dict()
+class UserUpdate(BaseModel):
+    """用户更新模型"""
+    name: str | None = None
+    email: EmailStr | None = None
+    password: str | None = None
 
-    async def patch(self, request, user: User):
-        args = user_parse_patch.parse_args(request)
-        # 在Tortoise-ORM中，update是类方法，需要更新特定字段
-        update_data = {}
-        if 'password' in args:
-            update_data['password_hash'] = User.hash_password(args.pop('password'))
-        update_data.update(args)
-        if update_data:
-            await User.filter(id=user.id).update(**update_data)
-        return user.to_dict()
 
-    async def delete(self, request, user: User):
-        await user.delete()
+class UserResponse(BaseModel):
+    """用户响应模型"""
+    id: int
+    name: str
+    email: str
+
+    class Config:
+        orm_mode = True
+
+
+async def create_user(user_data: UserCreate):
+    """创建新用户"""
+    # 检查用户名是否已存在
+    existing_user = await User.filter(name=user_data.name).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户名已存在"
+        )
+    
+    # 检查邮箱是否已存在
+    existing_email = await User.filter(email=user_data.email).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邮箱已存在"
+        )
+    
+    # 创建用户
+    password_hash = User.hash_password(user_data.password)
+    user = await User.create(
+        name=user_data.name,
+        password_hash=password_hash,
+        email=user_data.email
+    )
+    
+    return {'uid': user.id}
+
+
+async def get_current_user_info(current_user: User = Depends(login_require)):
+    """获取当前用户信息"""
+    return current_user.to_dict()
+
+
+async def update_user(user_data: UserUpdate, current_user: User = Depends(login_require)):
+    """更新用户信息"""
+    update_data = {}
+    
+    # 处理密码更新
+    if user_data.password:
+        update_data['password_hash'] = User.hash_password(user_data.password)
+    
+    # 处理其他字段更新
+    if user_data.name:
+        update_data['name'] = user_data.name
+    if user_data.email:
+        update_data['email'] = user_data.email
+    
+    # 执行更新
+    if update_data:
+        await User.filter(id=current_user.id).update(**update_data)
+        # 重新获取更新后的用户信息
+        updated_user = await User.get(id=current_user.id)
+        return updated_user.to_dict()
+    
+    return current_user.to_dict()
+
+
+async def delete_user(current_user: User = Depends(login_require)):
+    """删除当前用户"""
+    await current_user.delete()
+    return {"message": "用户已删除"}

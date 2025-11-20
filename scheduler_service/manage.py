@@ -15,7 +15,6 @@ except ImportError:
     config = configs.get(env)
 
 app = create_app(config)
-from scheduler_service import pg_db
 from scheduler_service.models import User
 
 
@@ -28,8 +27,7 @@ def cli():
 def shell():
     context = {
         "app": app,
-        "User": User,
-        "pg_db": pg_db
+        "User": User
     }
     embed(user_ns=context,
           colors="neutral",
@@ -52,24 +50,35 @@ def runserver(host, port, works, debug, access_log):
 
 
 @cli.command()
-@click.option('--check',
-              is_flag=True,
-              help='Health Check: run a health check and exit.')
 @click.option('-v', '--verbose', is_flag=True, help='Enable verbose output.')
-def arq(check, verbose):
+def worker(verbose):
+    """启动dramatiq worker"""
     import logging
-
-    from arq.logs import default_log_config
-    from arq.worker import check_health, run_worker
-
-    from scheduler_service.service import WorkerSettings
-    logging.config.dictConfig(default_log_config(verbose))
-
-    if check:
-        exit(check_health(WorkerSettings))
+    import sys
+    
+    # 配置日志
+    if verbose:
+        logging.basicConfig(level=logging.INFO)
     else:
-        kwargs = {}
-        run_worker(WorkerSettings, **kwargs)
+        logging.basicConfig(level=logging.WARNING)
+    
+    # 导入需要的模块
+    from scheduler_service import create_app
+    from scheduler_service.service import ping, startup_worker, shutdown_worker
+    
+    # 确保应用已初始化
+    app = create_app(config)
+    
+    # 运行dramatiq worker
+    from dramatiq.cli import main
+    
+    # 设置命令行参数
+    sys.argv = [sys.argv[0], 'scheduler_service.service', '--processes', '1']
+    
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Worker stopped")
 
 
 @cli.command()

@@ -34,16 +34,18 @@ class User(Model):
     def verify_password(self, password: str) -> bool:
         return pbkdf2_sha256.verify(password, self.password_hash)
 
-    def generate_auth_token(self, app: Sanic) -> str:
+    def generate_auth_token(self) -> str:
+        from scheduler_service.config import Config
         return jwt.encode({'id': self.id, 'flag': 'auth'},
-                          app.config['SECRET_KEY'],
-                          algorithm='HS256').decode()
+                          Config.SECRET_KEY,
+                          algorithm='HS256')
 
     @classmethod
-    async def verify_auth_token(cls, app: Sanic, token: str):
+    async def verify_auth_token(cls, token: str):
+        from scheduler_service.config import Config
         try:
             data = jwt.decode(token,
-                              app.config['SECRET_KEY'],
+                              Config.SECRET_KEY,
                               algorithms=['HS256'])
         except Exception:
             return False

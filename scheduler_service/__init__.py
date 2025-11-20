@@ -1,12 +1,12 @@
 from motor import motor_asyncio
-from arq import ArqRedis, create_pool
-from arq.connections import RedisSettings
+import dramatiq
+from dramatiq.brokers.rabbitmq import RabbitmqBroker
 from sanic import Sanic
 from tortoise import Tortoise, run_async
+from .scheduler import init_scheduler
 
 mongo_client: motor_asyncio.AsyncIOMotorClient = None
-mongo_db: motor_asyncio.AsyncIOMotorDatabase = None
-redis: ArqRedis = None
+rabbitmq_broker = None
 
 
 def create_app(config):
@@ -14,33 +14,33 @@ def create_app(config):
     app.config.update_config(config)
 
     app.listeners['after_server_start'].extend(
-        [setup_motor, setup_arq, setup_tortoise])
+        [setup_dramatiq, setup_tortoise])
 
     app.listeners['before_server_stop'].extend(
-        [close_motor, close_arq, close_tortoise])
+        [close_dramatiq, close_tortoise])
 
     from .api.v1 import bpg
     app.blueprint(bpg)
+    
+    # 初始化任务调度器
+    init_scheduler(app)
 
     return app
 
 
-async def setup_arq(app, loop):
-    global redis
-    settings = RedisSettings(
-        host=app.config.get("REDIS_HOST", "localhost"),
-        port=app.config.get("REDIS_PORT", 6379),
-        database=app.config.get("REDIS_DATABASE", 0),
-        password=app.config.get("REDIS_PASSWORD", None)
+def setup_dramatiq(app, loop):
+    global rabbitmq_broker
+    rabbitmq_broker = RabbitmqBroker(
+        url=f"amqp://{app.config.get('RABBITMQ_USER', 'guest')}:{app.config.get('RABBITMQ_PASSWORD', 'guest')}@{app.config.get('RABBITMQ_HOST', 'localhost')}:{app.config.get('RABBITMQ_PORT', 5672)}/{app.config.get('RABBITMQ_VHOST', '%2F')}"
     )
-    redis = await create_pool(settings)
+    # 设置为默认broker
+    dramatiq.set_broker(rabbitmq_broker)
 
 
-async def close_arq(app, loop):
-    global redis
-    if redis:
-        redis.close()
-        await redis.wait_closed()
+def close_dramatiq(app, loop):
+    global rabbitmq_broker
+    if rabbitmq_broker:
+        rabbitmq_broker.close()
 
 
 async def setup_tortoise(app, loop):
@@ -55,21 +55,3 @@ async def setup_tortoise(app, loop):
 
 async def close_tortoise(app, loop):
     await Tortoise.close_connections()
-
-
-async def setup_motor(app, loop):
-    global mongo_client, mongo_db
-    mongo_client = motor_asyncio.AsyncIOMotorClient(
-        "mongodb://localhost:27017", io_loop=loop)
-    mongo_db = mongo_client['test']
-
-
-async def close_motor(app, loop):
-    global mongo_client
-    mongo_client.close()
-
-
-# def make_arq(config):
-#     global redis
-#     redis = create_pool(RedisSettings())
-#     return redis

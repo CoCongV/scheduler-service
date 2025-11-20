@@ -1,26 +1,59 @@
+import dramatiq
 from aiohttp import ClientSession
+import asyncio
 
-from .request import ping
-
-# # def make_celery(app: Sanic) -> Celery:
-# #     celery = Celery(app.name)
-# #     celery.conf.update(app.config)
-# #     return celery
+# 定义全局session
+_session = None
 
 
-# async def make_arq():
-#     return await create_pool(RedisSettings())
+def get_session():
+    """获取aiohttp会话"""
+    global _session
+    if _session is None or _session.closed:
+        _session = ClientSession()
+    return _session
 
 
-async def startup(ctx):
-    ctx['session'] = ClientSession()
+async def close_session():
+    """关闭aiohttp会话"""
+    global _session
+    if _session and not _session.closed:
+        await _session.close()
 
 
-async def shutdown(ctx):
-    await ctx['session'].close()
+@dramatiq.actor
+async def ping(task_id):
+    """执行ping任务"""
+    from scheduler_service import mongo_db
+    session = get_session()
+    
+    try:
+        # 从MongoDB获取任务信息
+        task = await mongo_db.task.find_one({'_id': task_id})
+        
+        if task and 'urls' in task:
+            # 这里可以实现实际的请求逻辑
+            for url_info in task.get('urls', []):
+                url = url_info.get('request_url')
+                if url:
+                    try:
+                        async with session.get(url) as response:
+                            await response.text()
+                    except Exception as e:
+                        print(f"Error pinging {url}: {e}")
+    except Exception as e:
+        print(f"Task {task_id} failed: {e}")
 
 
-class WorkerSettings:
-    functions = [ping]
-    on_startup = startup
-    on_shutdown = shutdown
+# 注册启动和关闭钩子
+@dramatiq.actor
+async def startup_worker():
+    """worker启动时执行"""
+    global _session
+    _session = ClientSession()
+
+
+@dramatiq.actor
+async def shutdown_worker():
+    """worker关闭时执行"""
+    await close_session()

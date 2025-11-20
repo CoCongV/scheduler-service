@@ -1,33 +1,55 @@
+from pydantic import BaseModel
+from fastapi import HTTPException, status
 from tortoise.exceptions import DoesNotExist
-from sanic.exceptions import InvalidUsage, Unauthorized
-from sanic.log import logger
-from sanic_restful import Resource, reqparse
-
 from scheduler_service.models import User
 
 
-parser = reqparse.RequestParser()
-parser.add_argument("name")
-parser.add_argument("email")
-parser.add_argument("password", required=True)
+class TokenRequest(BaseModel):
+    """Token请求模型"""
+    name: str | None = None
+    email: str | None = None
+    password: str
 
 
-class AuthTokenApi(Resource):
+class TokenResponse(BaseModel):
+    """Token响应模型"""
+    token: str
 
-    async def get(self, request):
-        args = parser.parse_args(request)
-        try:
-            if args.name:
-                user = await User.objects.get(name=args.name)
-            elif args.email:
-                user = await User.objects.get(email=args.email)
-            else:
-                raise InvalidUsage("Input Username or Email, Please")
-        except DoesNotExist:
-            raise Unauthorized("Username or Password is incorrect")
-        if not user.verify_password(args.password):
-            raise Unauthorized("Username or Password is incorrect")
 
-        return {
-            "token": user.generate_auth_token(request.app)
-        }
+async def get_token(token_data: TokenRequest):
+    """获取认证token"""
+    # 验证请求参数
+    if not token_data.name and not token_data.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="请输入用户名或邮箱"
+        )
+    
+    try:
+        # 根据用户名或邮箱查找用户
+        if token_data.name:
+            user = await User.get(name=token_data.name)
+        else:
+            user = await User.get(email=token_data.email)
+    except DoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户名或密码错误",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 验证密码
+    if not user.verify_password(token_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户名或密码错误",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 更新登录时间
+    await user.ping()
+    
+    # 生成token
+    token = user.generate_auth_token()
+    
+    return {"token": token}

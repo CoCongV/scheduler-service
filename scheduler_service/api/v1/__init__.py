@@ -1,6 +1,4 @@
-from sanic import Blueprint
+"""v1版本API路由"""
+from . import task, user
 
-from .task import bp as task_bp
-from .user import bp as user_bp
-
-bpg = Blueprint.group(task_bp, user_bp, url_prefix="api/v1")
+# 导出router供父模块使用
