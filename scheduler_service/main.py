@@ -1,6 +1,7 @@
 """FastAPI主应用文件"""
 import os
-from typing import Any
+from typing import Any, AsyncGenerator
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from tortoise.contrib.fastapi import register_tortoise
@@ -11,22 +12,38 @@ from scheduler_service.scheduler import init_scheduler
 from scheduler_service import setup_dramatiq, close_dramatiq, setup_tortoise as setup_tortoise_db, close_tortoise
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """应用生命周期管理"""
+    # 启动时执行
+    await setup_dbs(app)
+    setup_dramatiq(app.config)
+    await init_scheduler(app)
+    yield
+    # 关闭时执行
+    await close_dbs()
+
 
 def create_app(config: Any = None) -> FastAPI:
     """创建FastAPI应用"""
+    # 配置
+    if config:
+        app_config = config
+    elif os.environ.get("schedulerEnv"):
+        app_config = configs[os.environ.get("schedulerEnv")]
+    else:
+        app_config = configs["default"]
+
+    # 使用新的lifespan事件处理器
     app = FastAPI(
         title="调度服务 API",
         description="任务调度服务的RESTful API",
-        version="0.1.0"
+        version="0.1.0",
+        lifespan=lifespan  # 设置生命周期管理
     )
-
-    # 配置
-    if config:
-        app.config = config
-    elif os.environ.get("schedulerEnv"):
-        app.config = configs[os.environ.get("schedulerEnv")]
-    else:
-        app.config = configs["default"]
+    
+    # 存储配置到app实例
+    app.config = app_config
 
     # 注册路由
     setup_routes(app)
@@ -39,23 +56,6 @@ def create_app(config: Any = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # 数据库配置
-    @app.on_event("startup")
-    async def startup_event():
-        """应用启动时初始化"""
-        # 使用共享的初始化函数
-        await setup_dbs(app)
-        # 设置Dramatiq消息队列
-        setup_dramatiq(app.config)
-        # 初始化调度器
-        await init_scheduler(app)
-
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        """应用关闭时清理"""
-        # 使用共享的关闭函数
-        await close_dbs()
 
     return app
 
