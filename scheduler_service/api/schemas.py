@@ -8,7 +8,7 @@ class TaskCreate(BaseModel):
     name: str
     interval: Optional[int] = None
     start_time: int
-    cookies: Optional[str] = None
+    header: Optional[dict] = None  # 从cookies更新为header
     request_url: str
     callback_url: Optional[str] = None
 
@@ -16,7 +16,8 @@ class TaskCreate(BaseModel):
 class URLDetailCreate(BaseModel):
     """URL详情创建模型"""
     name: Optional[str] = None
-    params: Optional[dict] = None
+    payload: Optional[dict] = None  # 从params更新为payload
+    header: Optional[dict] = None  # 添加header字段
 
 
 class TaskResponse(BaseModel):

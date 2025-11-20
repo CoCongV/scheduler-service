@@ -34,8 +34,8 @@ class Task(Model):
 class URLDetail(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=32)
-    params = fields.JSONField(default=dict)
-    cookies = fields.JSONField(null=True)  # 从Task模型迁移过来的cookies字段
+    payload = fields.JSONField(default=dict)
+    header = fields.JSONField(null=True)  # HTTP请求头字段
 
     # 定义与Task的外键关系
     task = fields.ForeignKeyField('models.Task', related_name='url_details', source_field='task_id')
