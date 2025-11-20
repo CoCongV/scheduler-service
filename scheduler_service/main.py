@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from scheduler_service.config import configs
 from scheduler_service.api import setup_routes
 from scheduler_service.scheduler import init_scheduler
+from scheduler_service import setup_dramatiq, close_dramatiq, setup_tortoise as setup_tortoise_db, close_tortoise
 
 # 全局变量
 mongo_db = None
@@ -46,35 +47,49 @@ def create_app(config: Any = None) -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         """应用启动时初始化"""
-        await setup_db(app)
+        # 使用共享的初始化函数
+        await setup_dbs(app)
+        # 设置Dramatiq消息队列
+        setup_dramatiq(app.config)
+        # 初始化调度器
         await init_scheduler(app)
 
     @app.on_event("shutdown")
     async def shutdown_event():
         """应用关闭时清理"""
-        await close_db(app)
+        # 使用共享的关闭函数
+        await close_dbs()
 
     return app
 
 
-async def setup_db(app: FastAPI):
-    """初始化数据库"""
+async def setup_dbs(app: FastAPI):
+    """初始化所有数据库连接"""
     global mongo_db
+    
+    # 获取数据库URL，支持多种配置键名
+    db_url = app.config.get('POSTGRES_URL') or app.config.get('PG_URL') or app.config.get('DB_URL')
+    if not db_url:
+        raise ValueError("PostgreSQL数据库URL未配置，请设置POSTGRES_URL、PG_URL或DB_URL")
     
     # PostgreSQL - Tortoise ORM
     register_tortoise(
         app=app,
-        db_url=app.config.POSTGRES_URL,
+        db_url=db_url,
         modules={"models": ["scheduler_service.models"]},
-        generate_schemas=True,
+        generate_schemas=True,  # 开发环境使用，生产环境应使用迁移
         add_exception_handlers=True
     )
     
-    # MongoDB
-    mongo_client = AsyncIOMotorClient(app.config.MONGO_URL)
-    mongo_db = mongo_client[app.config.MONGO_DATABASE]
+    # MongoDB配置
+    if hasattr(app.config, 'MONGO_URL') and app.config.MONGO_URL:
+        mongo_client = AsyncIOMotorClient(app.config.MONGO_URL)
+        mongo_db = mongo_client[app.config.get('MONGO_DATABASE', 'scheduler')]
 
 
-async def close_db(app: FastAPI):
-    """关闭数据库连接"""
-    pass
+async def close_dbs():
+    """关闭所有数据库连接"""
+    # 关闭Tortoise连接
+    await close_tortoise()
+    # 关闭Dramatiq连接
+    close_dramatiq()

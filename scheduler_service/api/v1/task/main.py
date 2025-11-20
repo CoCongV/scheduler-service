@@ -1,40 +1,9 @@
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel
 from fastapi import HTTPException, status, Depends
 from scheduler_service.api.decorators import login_require
 from scheduler_service.models import User, Task, URLDetail
 from scheduler_service.config import Config
-
-
-class TaskCreate(BaseModel):
-    """任务创建模型"""
-    name: str
-    interval: Optional[int] = None
-    start_time: int
-    cookies: Optional[str] = None
-    request_url: str
-    callback_url: Optional[str] = None
-
-
-class URLDetailCreate(BaseModel):
-    """URL详情创建模型"""
-    name: Optional[str] = None
-    params: Optional[dict] = None
-
-
-class TaskResponse(BaseModel):
-    """任务响应模型"""
-    id: int
-    name: str
-    interval: Optional[int]
-    user_id: int
-    start_time: datetime
-    request_url: str
-    callback_url: Optional[str]
-    
-    class Config:
-        orm_mode = True
+from scheduler_service.api.schemas import TaskCreate, URLDetailCreate
 
 
 async def get_tasks(current_user: User = Depends(login_require)):
@@ -47,8 +16,6 @@ async def get_tasks(current_user: User = Depends(login_require)):
 
 async def create_task(task_data: TaskCreate, current_user: User = Depends(login_require)):
     """创建新任务"""
-    # 移除任务数量限制检查
-
     # 创建任务
     task = await Task.create(
         name=task_data.name,

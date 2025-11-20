@@ -14,5 +14,8 @@
         "--ignore=E261,E501,F401",    // 忽略行内注释前空格不足的错误
         "--max-line-length=88", // 设置最大行长度
         "--exclude=migrations,.venv,venv,__pycache__" // 排除不需要检查的目录
+    ],
+    "pylint.path": [
+        "/home/cong/.cache/pypoetry/virtualenvs/scheduler-service--1w_zsQj-py3.13/bin/pylint"
     ]
 }

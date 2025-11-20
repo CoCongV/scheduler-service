@@ -1,57 +1,45 @@
-from motor import motor_asyncio
 import dramatiq
 from dramatiq.brokers.rabbitmq import RabbitmqBroker
-from sanic import Sanic
-from tortoise import Tortoise, run_async
+from tortoise import Tortoise
 from .scheduler import init_scheduler
 
-mongo_client: motor_asyncio.AsyncIOMotorClient = None
+# 全局变量
 rabbitmq_broker = None
 
-
-def create_app(config):
-    app = Sanic(name=config.NAME)
-    app.config.update_config(config)
-
-    app.listeners['after_server_start'].extend(
-        [setup_dramatiq, setup_tortoise])
-
-    app.listeners['before_server_stop'].extend(
-        [close_dramatiq, close_tortoise])
-
-    from .api.v1 import bpg
-    app.blueprint(bpg)
-    
-    # 初始化任务调度器
-    init_scheduler(app)
-
-    return app
+# 移除Sanic相关的create_app函数
 
 
-def setup_dramatiq(app, loop):
+def setup_dramatiq(config):
+    """初始化Dramatiq消息队列"""
     global rabbitmq_broker
     rabbitmq_broker = RabbitmqBroker(
-        url=f"amqp://{app.config.get('RABBITMQ_USER', 'guest')}:{app.config.get('RABBITMQ_PASSWORD', 'guest')}@{app.config.get('RABBITMQ_HOST', 'localhost')}:{app.config.get('RABBITMQ_PORT', 5672)}/{app.config.get('RABBITMQ_VHOST', '%2F')}"
+        url=f"amqp://{config.get('RABBITMQ_USER', 'guest')}:{config.get('RABBITMQ_PASSWORD', 'guest')}@{config.get('RABBITMQ_HOST', 'localhost')}:{config.get('RABBITMQ_PORT', 5672)}/{config.get('RABBITMQ_VHOST', '%2F')}"
     )
     # 设置为默认broker
     dramatiq.set_broker(rabbitmq_broker)
 
 
-def close_dramatiq(app, loop):
+def close_dramatiq():
+    """关闭Dramatiq连接"""
     global rabbitmq_broker
     if rabbitmq_broker:
         rabbitmq_broker.close()
 
 
-async def setup_tortoise(app, loop):
+async def setup_tortoise(config):
+    """初始化Tortoise-ORM"""
+    # 获取数据库URL，支持多种配置键名
+    db_url = config.get('PG_URL') or config.get('POSTGRES_URL') or config.get('DB_URL')
+    if not db_url:
+        raise ValueError("数据库URL未配置，请设置PG_URL、POSTGRES_URL或DB_URL环境变量")
+
     # 设置Tortoise-ORM
     await Tortoise.init(
-        db_url=app.config['PG_URL'],
+        db_url=db_url,
         modules={'models': ['scheduler_service.models']}
     )
-    # 自动创建表（仅开发环境使用，生产环境应使用迁移）
-    await Tortoise.generate_schemas()
 
 
-async def close_tortoise(app, loop):
+async def close_tortoise():
+    """关闭Tortoise连接，不依赖Sanic应用"""
     await Tortoise.close_connections()
