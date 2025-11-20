@@ -9,7 +9,7 @@ from tortoise.contrib.fastapi import register_tortoise
 from scheduler_service.config import configs
 from scheduler_service.api import setup_routes
 from scheduler_service.scheduler import init_scheduler
-from scheduler_service import setup_dramatiq, close_dramatiq, setup_tortoise as setup_tortoise_db, close_tortoise
+from scheduler_service import setup_dramatiq, close_dramatiq, close_tortoise
 
 
 @asynccontextmanager
@@ -68,7 +68,7 @@ async def setup_dbs(app: FastAPI):
     if not db_url:
         raise ValueError("PostgreSQL数据库URL未配置，请设置POSTGRES_URL、PG_URL或DB_URL")
     
-    # PostgreSQL - Tortoise ORM
+    # PostgreSQL - Tortoise ORM (使用官方实现)
     register_tortoise(
         app=app,
         db_url=db_url,
