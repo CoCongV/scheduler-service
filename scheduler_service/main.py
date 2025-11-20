@@ -4,15 +4,12 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from tortoise.contrib.fastapi import register_tortoise
-from motor.motor_asyncio import AsyncIOMotorClient
 
 from scheduler_service.config import configs
 from scheduler_service.api import setup_routes
 from scheduler_service.scheduler import init_scheduler
 from scheduler_service import setup_dramatiq, close_dramatiq, setup_tortoise as setup_tortoise_db, close_tortoise
 
-# 全局变量
-mongo_db = None
 
 
 def create_app(config: Any = None) -> FastAPI:
@@ -65,8 +62,7 @@ def create_app(config: Any = None) -> FastAPI:
 
 async def setup_dbs(app: FastAPI):
     """初始化所有数据库连接"""
-    global mongo_db
-    
+
     # 获取数据库URL，支持多种配置键名
     db_url = app.config.get('POSTGRES_URL') or app.config.get('PG_URL') or app.config.get('DB_URL')
     if not db_url:
@@ -80,11 +76,6 @@ async def setup_dbs(app: FastAPI):
         generate_schemas=True,  # 开发环境使用，生产环境应使用迁移
         add_exception_handlers=True
     )
-    
-    # MongoDB配置
-    if hasattr(app.config, 'MONGO_URL') and app.config.MONGO_URL:
-        mongo_client = AsyncIOMotorClient(app.config.MONGO_URL)
-        mongo_db = mongo_client[app.config.get('MONGO_DATABASE', 'scheduler')]
 
 
 async def close_dbs():
