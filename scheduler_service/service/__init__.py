@@ -1,5 +1,6 @@
 import dramatiq
 import httpx
+from scheduler_service.constants import RequestStatus
 
 # 定义全局session
 _session = None
@@ -69,7 +70,7 @@ async def ping(task_id):
                         'response': content.decode('utf-8'),
                         'code': response.status_code,
                         'exception': None,
-                        'status': 'complete'
+                        'status': RequestStatus.COMPLETE
                     }
                     
                 except Exception as e:
@@ -79,7 +80,7 @@ async def ping(task_id):
                         'response': None,
                         'code': None,
                         'exception': str(e),
-                        'status': 'fail'
+                        'status': RequestStatus.FAIL
                     }
                 
                 # 如果有callback_url，发送反馈
