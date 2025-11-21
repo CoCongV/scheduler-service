@@ -19,14 +19,4 @@ class Config:
 
     @classmethod
     def to_dict(cls):
-        return dict(cls.__dict__)
-
-
-class TestConfig(Config):
-    PG_URL = "postgresql://localhost/scheduler_test"
-
-
-configs = {
-    "default": Config,
-    "test": TestConfig
-}
+        return {k: v for k, v in cls.__dict__.items() if not k.startswith('__')}

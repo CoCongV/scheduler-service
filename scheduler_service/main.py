@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from tortoise.contrib.fastapi import register_tortoise
 
-from scheduler_service.config import configs
+from scheduler_service.config import Config
 from scheduler_service.api import setup_routes
 from scheduler_service.scheduler import init_scheduler
 from scheduler_service import setup_dramatiq, close_dramatiq, close_tortoise
@@ -27,35 +27,52 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def get_config():
     """获取配置：首先尝试从运行目录下读取config.toml文件，若不存在则使用默认配置"""
+    # 获取默认配置
+    default_config = Config.to_dict()
+    
     # 从运行目录获取config.toml文件路径
     config_path = os.path.join(os.getcwd(), "config.toml")
     
-    # 如果config.toml文件存在，则读取它
+    # 如果config.toml文件存在，则读取它并更新默认配置
     if os.path.exists(config_path):
         try:
             with open(config_path, "rb") as f:
                 # 使用tomllib读取TOML文件
                 config_data = tomllib.load(f)
                 
-                # 确保返回的是字典格式的配置
-                return config_data
+                # 更新默认配置
+                default_config.update(config_data)
         except Exception as e:
             # 在实际应用中，这里应该使用logger记录错误
             print(f"读取config.toml时出错: {e}")
     
-    # 如果文件不存在或读取失败，则回退到环境变量指定的默认配置
-    env = os.environ.get("schedulerEnv", "default")
-    return configs.get(env)
+    return default_config
 
 
 def create_app(config: Any = None) -> FastAPI:
     """创建FastAPI应用"""
-    # 配置
+    # 获取默认配置
+    default_config = Config.to_dict()
+    
+    # 如果传入了配置，则用传入的配置更新默认配置
     if config:
-        app_config = config
+        # 如果传入的是类，获取其字典形式
+        if hasattr(config, 'to_dict'):
+            config_dict = config.to_dict()
+        elif isinstance(config, dict):
+            config_dict = config
+        else:
+            # 尝试将其转换为字典
+            config_dict = dict(config.__dict__)
+        
+        # 更新默认配置
+        default_config.update(config_dict)
     else:
-        # 如果没有传入配置，则自动获取配置
-        app_config = get_config()
+        # 如果没有传入配置，则自动获取配置并更新默认配置
+        auto_config = get_config()
+        default_config.update(auto_config)
+    
+    app_config = default_config
 
     # 使用新的lifespan事件处理器
     app = FastAPI(

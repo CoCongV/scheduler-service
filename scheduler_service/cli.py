@@ -1,25 +1,26 @@
 import os
 import sys
 import logging
-import tomllib  # Python 3.11+ 的 tomllib 模块用于读取 TOML
 
 import click
-from tortoise import run_async
+from tortoise import run_async, Tortoise
 
-from scheduler_service.main import create_app, get_config
-from scheduler_service.config import configs
+from scheduler_service.main import create_app
+from scheduler_service.config import Config
 from scheduler_service.models import User
 from scheduler_service import setup_tortoise, close_tortoise
-from tortoise import Tortoise
+
+
+def get_config():
+    """获取配置"""
+    # 直接返回Config类的字典形式作为配置
+    return Config.to_dict()
 
 
 @click.group()
 def scheduler():
     """Scheduler Service 命令行工具"""
     click.echo("Scheduler Service CLI")
-
-
-
 
 
 @scheduler.command()
