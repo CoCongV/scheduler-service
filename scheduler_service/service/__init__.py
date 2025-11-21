@@ -50,9 +50,8 @@ async def ping(task_id):
                     if url_detail.payload:
                         request_kwargs['json'] = url_detail.payload
                     
-                    # 根据method执行相应的HTTP请求
-                    method = task.method.upper()
-                    match method:
+                    # 根据method执行相应的HTTP请求（已在保存时转换为大写）
+                    match task.method:
                         case 'POST':
                             response = await session.post(**request_kwargs)
                         case 'PUT':
