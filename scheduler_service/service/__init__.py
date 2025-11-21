@@ -48,19 +48,18 @@ async def ping(task_id):
                     
                     # 根据method执行相应的HTTP请求
                     method = task.method.upper()
-                    if method == 'GET':
-                        response = await session.get(**request_kwargs)
-                    elif method == 'POST':
-                        response = await session.post(**request_kwargs)
-                    elif method == 'PUT':
-                        response = await session.put(**request_kwargs)
-                    elif method == 'DELETE':
-                        response = await session.delete(**request_kwargs)
-                    elif method == 'PATCH':
-                        response = await session.patch(**request_kwargs)
-                    else:
-                        # 默认使用GET
-                        response = await session.get(**request_kwargs)
+                    match method:
+                        case 'POST':
+                            response = await session.post(**request_kwargs)
+                        case 'PUT':
+                            response = await session.put(**request_kwargs)
+                        case 'DELETE':
+                            response = await session.delete(**request_kwargs)
+                        case 'PATCH':
+                            response = await session.patch(**request_kwargs)
+                        case _:
+                            # 默认使用GET（包括当method为GET或其他未知方法时）
+                            response = await session.get(**request_kwargs)
                     
                     # 读取响应内容
                     content = await response.aread()
