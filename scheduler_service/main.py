@@ -29,6 +29,14 @@ def create_app(config: Any = None) -> FastAPI:
     # 配置
     if config:
         app_config = config
+    # 尝试从环境变量中读取配置（用于热重载模式）
+    elif any(key.startswith("SCHEDULER_") for key in os.environ):
+        app_config = {}
+        for key, value in os.environ.items():
+            if key.startswith("SCHEDULER_"):
+                # 移除SCHEDULER_前缀并将键名转为小写
+                config_key = key[len("SCHEDULER_"):].lower()
+                app_config[config_key] = value
     elif os.environ.get("schedulerEnv"):
         app_config = configs[os.environ.get("schedulerEnv")]
     else:

@@ -66,19 +66,24 @@ def shell():
 def runserver(host, port, workers, debug, access_log):
     """启动Web服务器（开发环境使用）"""
     import uvicorn
+    import os
 
     # 确保配置正确
     config = get_config()
-    app = create_app(config)
-
-    # 在开发环境中直接运行应用，使用uvicorn的开发服务器模式
-    # 注意：workers参数在开发模式下不使用，通常只有一个进程
+    
+    # 将配置保存到环境变量，供create_app函数在热重载时读取
+    if config:
+        for key, value in config.items():
+            os.environ[f"SCHEDULER_{key.upper()}"] = str(value)
+    
+    # 使用字符串导入路径，以支持热重载功能
     uvicorn.run(
-        app,
+        "scheduler_service.main:create_app",
         host=host,
         port=port,
         reload=debug,  # 开发模式下启用热重载
-        access_log=access_log
+        access_log=access_log,
+        factory=True  # 告知uvicorn这是一个应用工厂函数
     )
 
 

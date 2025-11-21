@@ -44,4 +44,4 @@ class RequestTaskResponse(BaseModel):
     method: str = 'GET'  # HTTP请求方法
 
     class Config:
-        orm_mode = True
+        from_attributes = True
