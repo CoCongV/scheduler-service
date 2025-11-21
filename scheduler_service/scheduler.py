@@ -1,10 +1,8 @@
 import asyncio
 import time
-from datetime import datetime
-import dramatiq
-from dramatiq.brokers.rabbitmq import RabbitmqBroker
+
 from scheduler_service.service import ping
-from scheduler_service.models import Task, URLDetail
+from scheduler_service.models import RequestTask
 from scheduler_service.utils import logger
 
 
@@ -56,7 +54,7 @@ class TaskScheduler:
     async def _check_and_execute_tasks(self):
         """检查并执行需要运行的任务"""
         # 获取所有活跃的任务
-        tasks = await Task.filter()
+        tasks = await RequestTask.filter()
 
         for task in tasks:
             # 检查任务是否应该运行
@@ -64,7 +62,7 @@ class TaskScheduler:
                 # 使用dramatiq异步执行任务
                 ping.send(str(task.id))
 
-    async def _should_run_task(self, task: Task) -> bool:
+    async def _should_run_task(self, task: RequestTask) -> bool:
         """判断任务是否应该运行"""
         # 这里可以实现更复杂的调度逻辑
         # 简单示例：基于interval检查是否应该运行
@@ -77,8 +75,10 @@ class TaskScheduler:
 
         return False
 
+
 # 创建全局调度器实例
 scheduler = TaskScheduler()
+
 
 def init_scheduler(app):
     """初始化调度器"""

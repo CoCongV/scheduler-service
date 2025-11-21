@@ -43,20 +43,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 packages = [{include = "scheduler_service"}]
 
-[tool.poetry.dev-dependencies]
-rope = "~=0.19"
-requests = "~=2.25"
-pytest-cov = "~=2.12"
-pytest-sugar = "~=0.9"
-pytest-mock = "~=3.6"
-pytest = "~=6.2"
-yapf = "~=0.31"
-pytest-sanic = "~=1.7"
-uvicorn = "~=0.14"
-flake8 = "~=3.9"
 [dependency-groups]
 dev = [
     "pylint (>=4.0.3,<5.0.0)",
     "ipython (>=9.7.0,<10.0.0)",
-    "flake8 (>=7.3.0,<8.0.0)"
+    "flake8 (>=7.3.0,<8.0.0)",
 ]
