@@ -15,7 +15,7 @@ COLORS = {
 
 class ColoredFormatter(Formatter):
     """带颜色的日志格式化器"""
-    
+
     def __init__(self, fmt=None, datefmt=None, style='%'):
         super().__init__(fmt, datefmt, style)
     
