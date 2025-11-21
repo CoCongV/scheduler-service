@@ -9,6 +9,7 @@ from scheduler_service.main import create_app
 from scheduler_service.config import configs
 from scheduler_service.models import User
 from scheduler_service import setup_tortoise, close_tortoise
+from tortoise import Tortoise
 
 
 @click.group()
@@ -105,8 +106,8 @@ def init_db():
         try:
             # 使用共享的数据库初始化函数
             await setup_tortoise(config)
-            # 生成数据库模式
-            await metadata.create_all()
+            # 使用Tortoise ORM生成数据库模式
+            await Tortoise.generate_schemas()
             click.echo("数据库初始化完成")
         except Exception as e:
             click.echo(f"数据库初始化失败: {e}")
