@@ -1,24 +1,23 @@
 import dramatiq
-from aiohttp import ClientSession
-import asyncio
+import httpx
 
 # 定义全局session
 _session = None
 
 
 def get_session():
-    """获取aiohttp会话"""
+    """获取httpx会话"""
     global _session
-    if _session is None or _session.closed:
-        _session = ClientSession()
+    if _session is None or _session.is_closed:
+        _session = httpx.AsyncClient()
     return _session
 
 
 async def close_session():
-    """关闭aiohttp会话"""
+    """关闭httpx会话"""
     global _session
-    if _session and not _session.closed:
-        await _session.close()
+    if _session and not _session.is_closed:
+        await _session.aclose()
 
 
 @dramatiq.actor
@@ -37,8 +36,8 @@ async def ping(task_id):
                 url = url_info.get('request_url')
                 if url:
                     try:
-                        async with session.get(url) as response:
-                            await response.text()
+                        response = await session.get(url)
+                        await response.aread()
                     except Exception as e:
                         print(f"Error pinging {url}: {e}")
     except Exception as e:
@@ -50,7 +49,7 @@ async def ping(task_id):
 async def startup_worker():
     """worker启动时执行"""
     global _session
-    _session = ClientSession()
+    _session = httpx.AsyncClient()
 
 
 @dramatiq.actor
