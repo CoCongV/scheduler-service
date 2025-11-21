@@ -35,13 +35,16 @@ async def ping(task_id):
             # 通过task反查URLDetail
             url_details = await URLDetail.filter(request_task_id=task_id)
             
+            # 准备基础请求参数（在循环外定义，避免重复创建）
+            base_request_kwargs = {
+                'url': task.request_url,
+                'headers': task.header if task.header else {}
+            }
+            
             for url_detail in url_details:
                 try:
-                    # 准备请求参数
-                    request_kwargs = {
-                        'url': task.request_url,
-                        'headers': task.header if task.header else {}
-                    }
+                    # 复制基础请求参数
+                    request_kwargs = base_request_kwargs.copy()
                     
                     # 如果有payload，作为请求体
                     if url_detail.payload:
