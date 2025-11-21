@@ -1,5 +1,6 @@
 """FastAPI主应用文件"""
 import os
+import tomllib  # Python 3.11+ 的 tomllib 模块用于读取 TOML
 from typing import Any, AsyncGenerator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -24,23 +25,37 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await close_dbs()
 
 
+def get_config():
+    """获取配置：首先尝试从运行目录下读取config.toml文件，若不存在则使用默认配置"""
+    # 从运行目录获取config.toml文件路径
+    config_path = os.path.join(os.getcwd(), "config.toml")
+    
+    # 如果config.toml文件存在，则读取它
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "rb") as f:
+                # 使用tomllib读取TOML文件
+                config_data = tomllib.load(f)
+                
+                # 确保返回的是字典格式的配置
+                return config_data
+        except Exception as e:
+            # 在实际应用中，这里应该使用logger记录错误
+            print(f"读取config.toml时出错: {e}")
+    
+    # 如果文件不存在或读取失败，则回退到环境变量指定的默认配置
+    env = os.environ.get("schedulerEnv", "default")
+    return configs.get(env)
+
+
 def create_app(config: Any = None) -> FastAPI:
     """创建FastAPI应用"""
     # 配置
     if config:
         app_config = config
-    # 尝试从环境变量中读取配置（用于热重载模式）
-    elif any(key.startswith("SCHEDULER_") for key in os.environ):
-        app_config = {}
-        for key, value in os.environ.items():
-            if key.startswith("SCHEDULER_"):
-                # 移除SCHEDULER_前缀并将键名转为小写
-                config_key = key[len("SCHEDULER_"):].lower()
-                app_config[config_key] = value
-    elif os.environ.get("schedulerEnv"):
-        app_config = configs[os.environ.get("schedulerEnv")]
     else:
-        app_config = configs["default"]
+        # 如果没有传入配置，则自动获取配置
+        app_config = get_config()
 
     # 使用新的lifespan事件处理器
     app = FastAPI(

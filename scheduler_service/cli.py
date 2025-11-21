@@ -6,7 +6,7 @@ import tomllib  # Python 3.11+ 的 tomllib 模块用于读取 TOML
 import click
 from tortoise import run_async
 
-from scheduler_service.main import create_app
+from scheduler_service.main import create_app, get_config
 from scheduler_service.config import configs
 from scheduler_service.models import User
 from scheduler_service import setup_tortoise, close_tortoise
@@ -19,26 +19,7 @@ def scheduler():
     click.echo("Scheduler Service CLI")
 
 
-def get_config():
-    """获取配置：首先尝试从运行目录下读取config.toml文件，若不存在则使用默认配置"""
-    # 从运行目录获取config.toml文件路径
-    config_path = os.path.join(os.getcwd(), "config.toml")
-    
-    # 如果config.toml文件存在，则读取它
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "rb") as f:
-                # 使用tomllib读取TOML文件
-                config_data = tomllib.load(f)
-                
-                # 确保返回的是字典格式的配置
-                return config_data
-        except Exception as e:
-            click.echo(f"读取config.toml时出错: {e}", err=True)
-    
-    # 如果文件不存在或读取失败，则回退到环境变量指定的默认配置
-    env = os.getenv("schedulerEnv", "default")
-    return configs.get(env)
+
 
 
 @scheduler.command()
@@ -66,17 +47,9 @@ def shell():
 def runserver(host, port, workers, debug, access_log):
     """启动Web服务器（开发环境使用）"""
     import uvicorn
-    import os
 
-    # 确保配置正确
-    config = get_config()
-    
-    # 将配置保存到环境变量，供create_app函数在热重载时读取
-    if config:
-        for key, value in config.items():
-            os.environ[f"SCHEDULER_{key.upper()}"] = str(value)
-    
     # 使用字符串导入路径，以支持热重载功能
+    # create_app函数内部会自动调用get_config()获取配置
     uvicorn.run(
         "scheduler_service.main:create_app",
         host=host,
