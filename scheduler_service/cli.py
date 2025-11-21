@@ -5,16 +5,9 @@ import logging
 import click
 from tortoise import run_async, Tortoise
 
-from scheduler_service.main import create_app
-from scheduler_service.config import Config
+from scheduler_service.main import create_app, get_config
 from scheduler_service.models import User
 from scheduler_service import setup_tortoise, close_tortoise
-
-
-def get_config():
-    """获取配置"""
-    # 直接返回Config类的字典形式作为配置
-    return Config.to_dict()
 
 
 @click.group()
