@@ -68,7 +68,8 @@ async def ping(task_id):
                     callback_data = {
                         'response': content.decode('utf-8'),
                         'code': response.status_code,
-                        'exception': None
+                        'exception': None,
+                        'status': 'complete'
                     }
                     
                 except Exception as e:
@@ -77,7 +78,8 @@ async def ping(task_id):
                     callback_data = {
                         'response': None,
                         'code': None,
-                        'exception': str(e)
+                        'exception': str(e),
+                        'status': 'fail'
                     }
                 
                 # 如果有callback_url，发送反馈
