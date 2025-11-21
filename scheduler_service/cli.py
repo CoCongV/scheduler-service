@@ -56,7 +56,8 @@ def runserver(host, port, workers, debug, access_log):
 
 @scheduler.command()
 @click.option('-v', '--verbose', is_flag=True, help='启用详细输出')
-def worker(verbose):
+@click.option('-p', '--processes', default=1, type=int, help='worker进程数量')
+def worker(verbose, processes):
     """启动dramatiq worker"""
     # 配置日志
     if verbose:
@@ -66,7 +67,7 @@ def worker(verbose):
 
     # 确保应用已初始化
     config = get_config()
-    app = create_app(config)
+    _ = create_app(config)
 
     # 运行dramatiq worker
     from dramatiq.cli import main
@@ -74,7 +75,7 @@ def worker(verbose):
     # 保存原始argv，避免修改全局状态
     original_argv = sys.argv.copy()
     try:
-        sys.argv = [sys.argv[0], 'scheduler_service.service', '--processes', '1']
+        sys.argv = [sys.argv[0], 'scheduler_service.service', '--processes', str(processes)]
         main()
     except KeyboardInterrupt:
         print("Worker stopped")
