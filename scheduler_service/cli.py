@@ -64,21 +64,20 @@ def shell():
 @click.option('--debug/--no-debug', default=True)
 @click.option('--access-log/--no-access-log', default=True)
 def runserver(host, port, workers, debug, access_log):
-    """启动Web服务器（使用uvicorn）"""
-    # FastAPI使用uvicorn运行，而不是Sanic的app.run方式
+    """启动Web服务器（开发环境使用）"""
     import uvicorn
 
     # 确保配置正确
     config = get_config()
     app = create_app(config)
 
-    # 直接使用已创建的app实例运行
+    # 在开发环境中直接运行应用，使用uvicorn的开发服务器模式
+    # 注意：workers参数在开发模式下不使用，通常只有一个进程
     uvicorn.run(
         app,
         host=host,
         port=port,
-        workers=workers,
-        reload=debug,
+        reload=debug,  # 开发模式下启用热重载
         access_log=access_log
     )
 
