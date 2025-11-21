@@ -6,23 +6,16 @@ from pydantic import BaseModel, validator
 VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
 
-class TaskCreate(BaseModel):
-    """任务创建模型"""
+class RequestTaskCreate(BaseModel):
+    """请求任务创建模型"""
     name: str
     interval: Optional[int] = None
     start_time: int
-    header: Optional[dict] = None  # 从cookies更新为header
+    header: Optional[dict] = None  # HTTP请求头字段
+    method: Optional[Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']] = 'GET'  # HTTP请求方法
     request_url: str
     callback_url: Optional[str] = None
     callback_token: Optional[str] = None  # 用于callback_url登录的token
-
-
-class URLDetailCreate(BaseModel):
-    """URL详情创建模型"""
-    name: Optional[str] = None
-    payload: Optional[dict] = None  # 从params更新为payload
-    header: Optional[dict] = None  # 添加header字段
-    method: Optional[Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']] = 'GET'  # HTTP请求方法
     
     @validator('method')
     def validate_method(cls, v):
@@ -31,8 +24,14 @@ class URLDetailCreate(BaseModel):
         return v.upper()
 
 
-class TaskResponse(BaseModel):
-    """任务响应模型"""
+class URLDetailCreate(BaseModel):
+    """URL详情创建模型"""
+    name: Optional[str] = None
+    payload: Optional[dict] = None  # 从params更新为payload
+
+
+class RequestTaskResponse(BaseModel):
+    """请求任务响应模型"""
     id: int
     name: str
     interval: Optional[int]
@@ -41,6 +40,8 @@ class TaskResponse(BaseModel):
     request_url: str
     callback_url: Optional[str]
     callback_token: Optional[str] = None  # 用于callback_url登录的token
+    header: Optional[dict] = None  # HTTP请求头字段
+    method: str = 'GET'  # HTTP请求方法
     
     class Config:
         orm_mode = True

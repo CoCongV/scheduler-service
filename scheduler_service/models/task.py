@@ -7,7 +7,7 @@ from tortoise import fields, Tortoise
 VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
 
-class Task(Model):
+class RequestTask(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=32)
     interval = fields.IntField(null=True)  # 存储间隔多少秒
@@ -17,9 +17,19 @@ class Task(Model):
     request_url = fields.CharField(max_length=128)
     callback_url = fields.CharField(max_length=128)
     callback_token = fields.CharField(max_length=64, null=True)  # 用于callback_url登录的token
+    header = fields.JSONField(null=True)  # HTTP请求头字段，从URLDetail移动
+    method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法，从URLDetail移动
 
     # 定义与User的外键关系
-    user = fields.ForeignKeyField('models.User', related_name='tasks', source_field='user_id')
+    user = fields.ForeignKeyField('models.User', related_name='request_tasks', source_field='user_id')
+
+    async def save(self, *args, **kwargs):
+        # 验证method是否是有效的HTTP方法
+        if self.method and self.method.upper() not in VALID_HTTP_METHODS:
+            raise ValueError(f"Invalid HTTP method: {self.method}. Must be one of {VALID_HTTP_METHODS}")
+        # 保存前转换为大写
+        self.method = self.method.upper()
+        await super().save(*args, **kwargs)
 
     def to_dict(self) -> dict:
         return {
@@ -32,7 +42,9 @@ class Task(Model):
             "user_id": self.user.id if self.user else None,
             "request_url": self.request_url,
             "callback_url": self.callback_url,
-            "callback_token": self.callback_token
+            "callback_token": self.callback_token,
+            "header": self.header,
+            "method": self.method
         }
 
 
@@ -40,16 +52,6 @@ class URLDetail(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=32)
     payload = fields.JSONField(default=dict)
-    header = fields.JSONField(null=True)  # HTTP请求头字段
-    method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法，默认GET
 
-    # 定义与Task的外键关系
-    task = fields.ForeignKeyField('models.Task', related_name='url_details', source_field='task_id')
-    
-    async def save(self, *args, **kwargs):
-        # 验证method是否是有效的HTTP方法
-        if self.method and self.method.upper() not in VALID_HTTP_METHODS:
-            raise ValueError(f"Invalid HTTP method: {self.method}. Must be one of {VALID_HTTP_METHODS}")
-        # 保存前转换为大写
-        self.method = self.method.upper()
-        await super().save(*args, **kwargs)
+    # 定义与RequestTask的外键关系
+    request_task = fields.ForeignKeyField('models.RequestTask', related_name='url_details', source_field='request_task_id')

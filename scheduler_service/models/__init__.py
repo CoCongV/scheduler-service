@@ -1,8 +1,8 @@
 # Tortoise-ORM models initialization
 
 from .user import User
-from .task import Task, URLDetail
+from .task import RequestTask, URLDetail
 
 __all__ = [
-    'User', 'Task', 'URLDetail'
+    'User', 'RequestTask', 'URLDetail'
 ]
