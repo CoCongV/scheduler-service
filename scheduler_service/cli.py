@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import tomllib  # Python 3.11+ 的 tomllib 模块用于读取 TOML
 
 import click
 from tortoise import run_async
@@ -19,7 +20,23 @@ def scheduler():
 
 
 def get_config():
-    """获取配置"""
+    """获取配置：首先尝试从运行目录下读取config.toml文件，若不存在则使用默认配置"""
+    # 从运行目录获取config.toml文件路径
+    config_path = os.path.join(os.getcwd(), "config.toml")
+    
+    # 如果config.toml文件存在，则读取它
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "rb") as f:
+                # 使用tomllib读取TOML文件
+                config_data = tomllib.load(f)
+                
+                # 确保返回的是字典格式的配置
+                return config_data
+        except Exception as e:
+            click.echo(f"读取config.toml时出错: {e}", err=True)
+    
+    # 如果文件不存在或读取失败，则回退到环境变量指定的默认配置
     env = os.getenv("schedulerEnv", "default")
     return configs.get(env)
 
@@ -75,9 +92,6 @@ def worker(verbose):
         logging.basicConfig(level=logging.INFO)
     else:
         logging.basicConfig(level=logging.WARNING)
-
-    # 导入需要的模块
-    from scheduler_service.service import ping, startup_worker, shutdown_worker
 
     # 确保应用已初始化
     config = get_config()
