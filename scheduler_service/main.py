@@ -9,7 +9,6 @@ from tortoise.contrib.fastapi import register_tortoise
 
 from scheduler_service.config import Config
 from scheduler_service.api import setup_routes
-from scheduler_service.scheduler import init_scheduler
 from scheduler_service import setup_dramatiq, close_dramatiq, close_tortoise
 
 
@@ -19,7 +18,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # 启动时执行
     await setup_dbs(app)
     setup_dramatiq(app.config)
-    await init_scheduler(app)
     yield
     # 关闭时执行
     await close_dbs()
@@ -71,8 +69,6 @@ def create_app(config: Any = None) -> FastAPI:
         # 如果没有传入配置，则自动获取配置并更新默认配置
         auto_config = get_config()
         default_config.update(auto_config)
-    
-    app_config = default_config
 
     # 使用新的lifespan事件处理器
     app = FastAPI(
@@ -83,7 +79,7 @@ def create_app(config: Any = None) -> FastAPI:
     )
 
     # 存储配置到app实例
-    app.config = app_config
+    app.config = default_config
 
     # 注册路由
     setup_routes(app)

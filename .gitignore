@@ -97,3 +97,4 @@ id_rsa
 
 ./vscode
 config.py
+config.toml

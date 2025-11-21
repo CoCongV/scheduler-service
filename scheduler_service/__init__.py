@@ -1,19 +1,14 @@
 import dramatiq
 from dramatiq.brokers.rabbitmq import RabbitmqBroker
 from tortoise import Tortoise
-from .scheduler import init_scheduler
-
-# 全局变量
-rabbitmq_broker = None
 
 # 移除Sanic相关的create_app函数
 
 
 def setup_dramatiq(config):
     """初始化Dramatiq消息队列"""
-    global rabbitmq_broker
     rabbitmq_broker = RabbitmqBroker(
-        url=f"amqp://{config.get('RABBITMQ_USER', 'guest')}:{config.get('RABBITMQ_PASSWORD', 'guest')}@{config.get('RABBITMQ_HOST', 'localhost')}:{config.get('RABBITMQ_PORT', 5672)}/{config.get('RABBITMQ_VHOST', '%2F')}"
+        url=f"amqp://{config.get('RABBITMQ_USER')}:{config.get('RABBITMQ_PASSWORD')}@{config.get('RABBITMQ_HOST')}:{config.get('RABBITMQ_PORT')}/{config.get('RABBITMQ_VHOST')}"
     )
     # 设置为默认broker
     dramatiq.set_broker(rabbitmq_broker)
@@ -21,9 +16,10 @@ def setup_dramatiq(config):
 
 def close_dramatiq():
     """关闭Dramatiq连接"""
-    global rabbitmq_broker
-    if rabbitmq_broker:
-        rabbitmq_broker.close()
+    # 使用dramatiq.get_broker()获取当前broker，不需要全局变量
+    current_broker = dramatiq.get_broker()
+    if current_broker:
+        current_broker.close()
 
 
 async def setup_tortoise(config):
