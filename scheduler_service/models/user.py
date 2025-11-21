@@ -4,6 +4,7 @@ import jwt
 from passlib.hash import pbkdf2_sha256
 from tortoise.models import Model
 from tortoise import fields
+from tortoise.exceptions import DoesNotExist
 
 
 class User(Model):
@@ -16,7 +17,8 @@ class User(Model):
     login_time = fields.DatetimeField(null=True)
 
     async def ping(self):
-        await self.update(login_time=datetime.now())
+        self.login_time = datetime.now()
+        await self.save()
 
     @property
     def password(self):
@@ -53,7 +55,7 @@ class User(Model):
                 return False
             try:
                 return await cls.get(id=data['id'])
-            except cls.DoesNotExist:
+            except DoesNotExist:
                 return False
 
     def to_dict(self) -> dict:
