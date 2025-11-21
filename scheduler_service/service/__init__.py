@@ -27,30 +27,30 @@ async def ping(task_id):
     """执行ping任务"""
     from scheduler_service.models import RequestTask, URLDetail
     session = get_session()
-    
+
     try:
         # 从数据库获取任务信息
         task = await RequestTask.get_or_none(id=task_id)
-        
+
         if task:
             # 通过task反查URLDetail
             url_details = await URLDetail.filter(request_task_id=task_id)
-            
+
             # 准备基础请求参数（在循环外定义，避免重复创建）
             base_request_kwargs = {
                 'url': task.request_url,
                 'headers': task.header if task.header else {}
             }
-            
+
             for url_detail in url_details:
                 try:
                     # 复制基础请求参数
                     request_kwargs = base_request_kwargs.copy()
-                    
+
                     # 如果有payload，作为请求体
                     if url_detail.payload:
                         request_kwargs['json'] = url_detail.payload
-                    
+
                     # 根据method执行相应的HTTP请求（已在保存时转换为大写）
                     match task.method:
                         case 'POST':
@@ -64,10 +64,10 @@ async def ping(task_id):
                         case _:
                             # 默认使用GET（包括当method为GET或其他未知方法时）
                             response = await session.get(**request_kwargs)
-                    
-                    # 读取响应内容
+
+                        # 读取响应内容
                     content = await response.aread()
-                    
+
                     # 准备反馈数据
                     callback_data = {
                         'response': content.decode('utf-8'),
@@ -75,7 +75,7 @@ async def ping(task_id):
                         'exception': None,
                         'status': RequestStatus.COMPLETE
                     }
-                    
+
                 except Exception as e:
                     # 处理请求异常
                     logger.error("Error requesting %s: %s", task.request_url, e)
@@ -85,7 +85,7 @@ async def ping(task_id):
                         'exception': str(e),
                         'status': RequestStatus.FAIL
                     }
-                
+
                 # 如果有callback_url，发送反馈
                 if task.callback_url:
                     try:
@@ -95,9 +95,9 @@ async def ping(task_id):
                         )
                     except Exception as e:
                         logger.error("Error sending callback to %s: %s", task.callback_url, e)
+
     except Exception as e:
         logger.error("Task %s failed: %s", task_id, e)
-
 
 # 注册启动和关闭钩子
 @dramatiq.actor
