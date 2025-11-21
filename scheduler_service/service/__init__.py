@@ -1,6 +1,7 @@
 import dramatiq
 import httpx
 from scheduler_service.constants import RequestStatus
+from scheduler_service.utils.logger import logger
 
 # 定义全局session
 _session = None
@@ -77,7 +78,7 @@ async def ping(task_id):
                     
                 except Exception as e:
                     # 处理请求异常
-                    print(f"Error requesting {task.request_url}: {e}")
+                    logger.error(f"Error requesting {task.request_url}: {e}")
                     callback_data = {
                         'response': None,
                         'code': None,
@@ -93,9 +94,9 @@ async def ping(task_id):
                             json=callback_data
                         )
                     except Exception as e:
-                        print(f"Error sending callback to {task.callback_url}: {e}")
+                        logger.error(f"Error sending callback to {task.callback_url}: {e}")
     except Exception as e:
-        print(f"Task {task_id} failed: {e}")
+        logger.error(f"Task {task_id} failed: {e}")
 
 
 # 注册启动和关闭钩子
