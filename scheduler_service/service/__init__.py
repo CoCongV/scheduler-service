@@ -23,23 +23,73 @@ async def close_session():
 @dramatiq.actor
 async def ping(task_id):
     """执行ping任务"""
-    from scheduler_service import mongo_db
+    from scheduler_service.models import RequestTask, URLDetail
     session = get_session()
     
     try:
-        # 从MongoDB获取任务信息
-        task = await mongo_db.task.find_one({'_id': task_id})
+        # 从数据库获取任务信息
+        task = await RequestTask.get_or_none(id=task_id)
         
-        if task and 'urls' in task:
-            # 这里可以实现实际的请求逻辑
-            for url_info in task.get('urls', []):
-                url = url_info.get('request_url')
-                if url:
+        if task:
+            # 通过task反查URLDetail
+            url_details = await URLDetail.filter(request_task_id=task_id)
+            
+            for url_detail in url_details:
+                try:
+                    # 准备请求参数
+                    request_kwargs = {
+                        'url': task.request_url,
+                        'headers': task.header if task.header else {}
+                    }
+                    
+                    # 如果有payload，作为请求体
+                    if url_detail.payload:
+                        request_kwargs['json'] = url_detail.payload
+                    
+                    # 根据method执行相应的HTTP请求
+                    method = task.method.upper()
+                    if method == 'GET':
+                        response = await session.get(**request_kwargs)
+                    elif method == 'POST':
+                        response = await session.post(**request_kwargs)
+                    elif method == 'PUT':
+                        response = await session.put(**request_kwargs)
+                    elif method == 'DELETE':
+                        response = await session.delete(**request_kwargs)
+                    elif method == 'PATCH':
+                        response = await session.patch(**request_kwargs)
+                    else:
+                        # 默认使用GET
+                        response = await session.get(**request_kwargs)
+                    
+                    # 读取响应内容
+                    content = await response.aread()
+                    
+                    # 准备反馈数据
+                    callback_data = {
+                        'response': content.decode('utf-8'),
+                        'code': response.status_code,
+                        'exception': None
+                    }
+                    
+                except Exception as e:
+                    # 处理请求异常
+                    print(f"Error requesting {task.request_url}: {e}")
+                    callback_data = {
+                        'response': None,
+                        'code': None,
+                        'exception': str(e)
+                    }
+                
+                # 如果有callback_url，发送反馈
+                if task.callback_url:
                     try:
-                        response = await session.get(url)
-                        await response.aread()
+                        await session.post(
+                            task.callback_url,
+                            json=callback_data
+                        )
                     except Exception as e:
-                        print(f"Error pinging {url}: {e}")
+                        print(f"Error sending callback to {task.callback_url}: {e}")
     except Exception as e:
         print(f"Task {task_id} failed: {e}")
 
