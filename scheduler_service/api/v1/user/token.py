@@ -24,7 +24,7 @@ async def get_token(token_data: TokenRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="请输入用户名或邮箱"
         )
-    
+
     try:
         # 根据用户名或邮箱查找用户
         if token_data.name:
@@ -37,7 +37,7 @@ async def get_token(token_data: TokenRequest):
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # 验证密码
     if not user.verify_password(token_data.password):
         raise HTTPException(
@@ -45,11 +45,11 @@ async def get_token(token_data: TokenRequest):
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # 更新登录时间
     await user.ping()
-    
+
     # 生成token
     token = user.generate_auth_token()
-    
+
     return {"token": token}

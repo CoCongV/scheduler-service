@@ -41,7 +41,7 @@ def create_app(config: Any = None) -> FastAPI:
         version="0.1.0",
         lifespan=lifespan  # 设置生命周期管理
     )
-    
+
     # 存储配置到app实例
     app.config = app_config
 

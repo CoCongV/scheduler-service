@@ -49,11 +49,11 @@ def runserver(host, port, workers, debug, access_log):
     """启动Web服务器（使用uvicorn）"""
     # FastAPI使用uvicorn运行，而不是Sanic的app.run方式
     import uvicorn
-    
+
     # 确保配置正确
     config = get_config()
     app = create_app(config)
-    
+
     # 使用uvicorn运行FastAPI应用
     uvicorn.run(
         "scheduler_service.main:create_app()",
@@ -74,17 +74,17 @@ def worker(verbose):
         logging.basicConfig(level=logging.INFO)
     else:
         logging.basicConfig(level=logging.WARNING)
-    
+
     # 导入需要的模块
     from scheduler_service.service import ping, startup_worker, shutdown_worker
-    
+
     # 确保应用已初始化
     config = get_config()
     app = create_app(config)
-    
+
     # 运行dramatiq worker
     from dramatiq.cli import main
-    
+
     # 保存原始argv，避免修改全局状态
     original_argv = sys.argv.copy()
     try:
@@ -100,7 +100,7 @@ def worker(verbose):
 def init_db():
     """初始化数据库"""
     config = get_config()
-    
+
     async def init_tables():
         try:
             # 使用共享的数据库初始化函数
@@ -112,7 +112,7 @@ def init_db():
             click.echo(f"数据库初始化失败: {e}")
         finally:
             await close_tortoise()
-    
+
     # 运行异步函数
     run_async(init_tables())
 

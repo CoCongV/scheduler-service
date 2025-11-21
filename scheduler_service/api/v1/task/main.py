@@ -42,7 +42,7 @@ async def get_task(task_id: int, current_user: User = Depends(login_require)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="请求任务不存在"
         )
-    
+
     return task.to_dict()
 
 
@@ -59,9 +59,9 @@ async def create_url_detail(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="请求任务不存在"
         )
-    
+
     # 移除URL数量限制检查
-    
+
     # 创建URL详情
     url_detail = await URLDetail.create(
         name=url_data.name,
@@ -82,7 +82,7 @@ async def delete_task(task_id: int, current_user: User = Depends(login_require))
             status_code=status.HTTP_404_NOT_FOUND,
             detail="请求任务不存在"
         )
-    
+
     # 删除任务及其关联的URL详情
     await URLDetail.filter(request_task_id=task_id).delete()
     await task.delete()

@@ -44,7 +44,7 @@ async def create_user(user_data: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名已存在"
         )
-    
+
     # 检查邮箱是否已存在
     existing_email = await User.filter(email=user_data.email).first()
     if existing_email:
@@ -52,7 +52,7 @@ async def create_user(user_data: UserCreate):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="邮箱已存在"
         )
-    
+
     # 创建用户
     password_hash = User.hash_password(user_data.password)
     user = await User.create(
@@ -60,7 +60,7 @@ async def create_user(user_data: UserCreate):
         password_hash=password_hash,
         email=user_data.email
     )
-    
+
     return {'uid': user.id}
 
 
@@ -72,24 +72,24 @@ async def get_current_user_info(current_user: User = Depends(login_require)):
 async def update_user(user_data: UserUpdate, current_user: User = Depends(login_require)):
     """更新用户信息"""
     update_data = {}
-    
+
     # 处理密码更新
     if user_data.password:
         update_data['password_hash'] = User.hash_password(user_data.password)
-    
+
     # 处理其他字段更新
     if user_data.name:
         update_data['name'] = user_data.name
     if user_data.email:
         update_data['email'] = user_data.email
-    
+
     # 执行更新
     if update_data:
         await User.filter(id=current_user.id).update(**update_data)
         # 重新获取更新后的用户信息
         updated_user = await User.get(id=current_user.id)
         return updated_user.to_dict()
-    
+
     return current_user.to_dict()
 
 

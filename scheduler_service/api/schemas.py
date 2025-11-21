@@ -16,7 +16,7 @@ class RequestTaskCreate(BaseModel):
     request_url: str
     callback_url: Optional[str] = None
     callback_token: Optional[str] = None  # 用于callback_url登录的token
-    
+
     @validator('method')
     def validate_method(cls, v):
         if v and v.upper() not in VALID_HTTP_METHODS:
@@ -42,6 +42,6 @@ class RequestTaskResponse(BaseModel):
     callback_token: Optional[str] = None  # 用于callback_url登录的token
     header: Optional[dict] = None  # HTTP请求头字段
     method: str = 'GET'  # HTTP请求方法
-    
+
     class Config:
         orm_mode = True
