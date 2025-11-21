@@ -78,7 +78,7 @@ async def ping(task_id):
                     
                 except Exception as e:
                     # 处理请求异常
-                    logger.error(f"Error requesting {task.request_url}: {e}")
+                    logger.error("Error requesting %s: %s", task.request_url, e)
                     callback_data = {
                         'response': None,
                         'code': None,
@@ -94,9 +94,9 @@ async def ping(task_id):
                             json=callback_data
                         )
                     except Exception as e:
-                        logger.error(f"Error sending callback to {task.callback_url}: {e}")
+                        logger.error("Error sending callback to %s: %s", task.callback_url, e)
     except Exception as e:
-        logger.error(f"Task {task_id} failed: {e}")
+        logger.error("Task %s failed: %s", task_id, e)
 
 
 # 注册启动和关闭钩子
