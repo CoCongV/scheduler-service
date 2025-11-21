@@ -55,9 +55,9 @@ def runserver(host, port, workers, debug, access_log):
     config = get_config()
     app = create_app(config)
 
-    # 使用uvicorn运行FastAPI应用
+    # 直接使用已创建的app实例运行
     uvicorn.run(
-        "scheduler_service.main:create_app()",
+        app,
         host=host,
         port=port,
         workers=workers,
