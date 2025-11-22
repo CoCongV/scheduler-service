@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from scheduler_service.models import RequestTask, URLDetail
+from scheduler_service.models import RequestTask
 from tests.const import task_url
 
 

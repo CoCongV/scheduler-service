@@ -10,12 +10,15 @@ class RequestTaskCreate(BaseModel):
     """请求任务创建模型"""
     name: str
     interval: Optional[int] = None
+    random_interval_seconds_min: Optional[int] = None  # 最小浮动时间
+    random_interval_seconds_max: Optional[int] = None  # 最大浮动时间
     start_time: int
     header: Optional[dict] = None  # HTTP请求头字段
     method: Optional[Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']] = 'GET'  # HTTP请求方法
     request_url: str
     callback_url: Optional[str] = None
     callback_token: Optional[str] = None  # 用于callback_url登录的token
+    body: Optional[dict] = None  # HTTP请求体
 
     @validator('method')
     def validate_method(cls, v):
@@ -24,17 +27,13 @@ class RequestTaskCreate(BaseModel):
         return v.upper()
 
 
-class URLDetailCreate(BaseModel):
-    """URL详情创建模型"""
-    name: Optional[str] = None
-    payload: Optional[dict] = None  # 从params更新为payload
-
-
 class RequestTaskResponse(BaseModel):
     """请求任务响应模型"""
     id: int
     name: str
     interval: Optional[int]
+    random_interval_seconds_min: Optional[int] = None  # 最小浮动时间
+    random_interval_seconds_max: Optional[int] = None  # 最大浮动时间
     user_id: int
     start_time: datetime
     request_url: str
@@ -42,6 +41,7 @@ class RequestTaskResponse(BaseModel):
     callback_token: Optional[str] = None  # 用于callback_url登录的token
     header: Optional[dict] = None  # HTTP请求头字段
     method: str = 'GET'  # HTTP请求方法
+    body: Optional[dict] = None  # HTTP请求体
 
     class Config:
         from_attributes = True

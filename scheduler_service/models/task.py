@@ -17,8 +17,9 @@ class RequestTask(Model):
     request_url = fields.CharField(max_length=128)
     callback_url = fields.CharField(max_length=128)
     callback_token = fields.CharField(max_length=64, null=True)  # 用于callback_url登录的token
-    header = fields.JSONField(null=True)  # HTTP请求头字段，从URLDetail移动
-    method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法，从URLDetail移动
+    header = fields.JSONField(null=True)  # HTTP请求头字段
+    method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法
+    body = fields.JSONField(default=dict) 
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField('models.User', related_name='request_tasks', source_field='user_id')
@@ -44,14 +45,6 @@ class RequestTask(Model):
             "callback_url": self.callback_url,
             "callback_token": self.callback_token,
             "header": self.header,
-            "method": self.method
+            "method": self.method,
+            "body": self.body
         }
-
-
-class URLDetail(Model):
-    id = fields.IntField(pk=True)
-    name = fields.CharField(max_length=32)
-    payload = fields.JSONField(default=dict)
-
-    # 定义与RequestTask的外键关系
-    request_task = fields.ForeignKeyField('models.RequestTask', related_name='url_details', source_field='request_task_id')

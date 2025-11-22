@@ -95,6 +95,6 @@ tmp/
 
 id_rsa
 
-./vscode
+.vscode/
 config.py
 config.toml

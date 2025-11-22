@@ -2,7 +2,7 @@
     "python-envs.defaultEnvManager": "ms-python.python:system",
     "python-envs.defaultPackageManager": "ms-python.python:pip",
     "python-envs.pythonProjects": [],
-    "python.defaultInterpreterPath": "/home/cong/.cache/pypoetry/virtualenvs/scheduler-service--1w_zsQj-py3.13/bin/python",
+    "python.defaultInterpreterPath": "/home/cong/.cache/pypoetry/virtualenvs/scheduler-service-ZA8KQB1Z-py3.14/bin/python",
     // 确保使用你实际复制的路径
     // 可以添加以下设置，让 Pylance 重新加载索引
     "python.languageServer": "Pylance", // 确保使用 Pylance
@@ -16,6 +16,6 @@
         "--exclude=migrations,.venv,venv,__pycache__" // 排除不需要检查的目录
     ],
     "pylint.path": [
-        "/home/cong/.cache/pypoetry/virtualenvs/scheduler-service--1w_zsQj-py3.13/bin/pylint"
+        "/home/cong/.cache/pypoetry/virtualenvs/scheduler-service-ZA8KQB1Z-py3.14/bin/pylint"
     ]
 }
