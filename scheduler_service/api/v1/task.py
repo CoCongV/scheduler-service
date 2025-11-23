@@ -4,6 +4,7 @@ from scheduler_service.api.decorators import login_require
 from scheduler_service.models import User, RequestTask
 from scheduler_service.config import Config
 from scheduler_service.api.schemas import RequestTaskCreate
+from scheduler_service.service.request import ping
 
 
 async def get_tasks(current_user: User = Depends(login_require)):
@@ -28,6 +29,10 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
         method=task_data.method,
         body=task_data.body if task_data.body is not None else {}
     )
+    
+    # 发送ping任务到消息队列
+    ping.send(task.id)
+    
     return {
         'task_id': task.id
     }
