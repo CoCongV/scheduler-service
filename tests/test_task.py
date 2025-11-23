@@ -15,7 +15,6 @@ class TestTaskModel:
         """测试创建任务"""
         task = await RequestTask.create(
             name="test_task",
-            interval=1000,
             start_time=datetime.now(),
             user_id=user.id,
             request_url="http://example.com",
@@ -23,7 +22,6 @@ class TestTaskModel:
             method="GET"
         )
         assert task.name == "test_task"
-        assert task.interval == 1000
         assert task.user_id == user.id
         assert task.method == "GET"
         
@@ -34,9 +32,6 @@ class TestTaskModel:
         """测试带有随机间隔的任务"""
         task = await RequestTask.create(
             name="random_task",
-            interval=1000,
-            random_interval_seconds_min=500,
-            random_interval_seconds_max=1500,
             start_time=datetime.now(),
             user_id=user.id,
             request_url="http://example.com",
@@ -44,8 +39,6 @@ class TestTaskModel:
             method="POST",
             body={"key": "value"}
         )
-        assert task.random_interval_seconds_min == 500
-        assert task.random_interval_seconds_max == 1500
         assert task.method == "POST"
         assert task.body == {"key": "value"}
         
@@ -81,7 +74,6 @@ class TestTaskModel:
         """测试任务转字典方法"""
         task = await RequestTask.create(
             name="dict_test",
-            interval=2000,
             start_time=datetime.now(),
             user_id=user.id,
             request_url="http://example.com",
@@ -93,7 +85,6 @@ class TestTaskModel:
         task_dict = task.to_dict()
         
         assert task_dict["name"] == "dict_test"
-        assert task_dict["interval"] == 2000
         assert task_dict["method"] == "POST"
         assert task_dict["header"] == {"Authorization": "Bearer token"}
         assert task_dict["body"] == {"data": "test"}
@@ -109,7 +100,6 @@ class TestTaskAPI:
         """测试创建任务API"""
         task_data = {
             "name": "api_test_task",
-            "interval": 1000,
             "start_time": time.time(),
             "request_url": "http://example.com",
             "callback_url": "http://example.com/callback",
@@ -131,9 +121,6 @@ class TestTaskAPI:
         """测试创建带有随机间隔的任务"""
         task_data = {
             "name": "random_interval_task",
-            "interval": 1000,
-            "random_interval_seconds_min": 500,
-            "random_interval_seconds_max": 1500,
             "start_time": time.time(),
             "request_url": "http://example.com",
             "method": "GET"
@@ -153,7 +140,6 @@ class TestTaskAPI:
         # 先创建几个任务
         task1 = await RequestTask.create(
             name="task1",
-            interval=1000,
             start_time=datetime.now(),
             user_id=user.id,
             request_url="http://example.com/1",
@@ -161,7 +147,6 @@ class TestTaskAPI:
         )
         task2 = await RequestTask.create(
             name="task2",
-            interval=2000,
             start_time=datetime.now(),
             user_id=user.id,
             request_url="http://example.com/2",
@@ -184,7 +169,6 @@ class TestTaskAPI:
         # 创建任务
         task = await RequestTask.create(
             name="single_task",
-            interval=1000,
             start_time=datetime.now(),
             user_id=user.id,
             request_url="http://example.com/single",
@@ -214,7 +198,6 @@ class TestTaskAPI:
         # 创建任务
         task = await RequestTask.create(
             name="delete_me",
-            interval=1000,
             start_time=datetime.now(),
             user_id=user.id,
             request_url="http://example.com/delete",
@@ -241,7 +224,7 @@ class TestTaskAPI:
         resp = await client.get(const.task_url)
         assert resp.status_code == 401
         
-        resp = await client.post(const.task_url, json={"name": "test"})
+        resp = await client.post(const.task_url, json={"name": "test", "start_time": time.time(), "request_url": "http://example.com"})
         assert resp.status_code == 401
         
         resp = await client.get(f"{const.task_url}/1")

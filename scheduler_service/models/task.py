@@ -10,12 +10,9 @@ VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'
 class RequestTask(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=32)
-    interval = fields.IntField(null=True)  # 存储间隔多少秒
-    random_interval_seconds_min = fields.IntField(null=True)  # 最小浮动时间
-    random_interval_seconds_max = fields.IntField(null=True)  # 最大浮动时间
     start_time = fields.DatetimeField(auto_now_add=True)
     request_url = fields.CharField(max_length=128)
-    callback_url = fields.CharField(max_length=128)
+    callback_url = fields.CharField(max_length=128, null=True)
     callback_token = fields.CharField(max_length=64, null=True)  # 用于callback_url登录的token
     header = fields.JSONField(null=True)  # HTTP请求头字段
     method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法
@@ -36,11 +33,8 @@ class RequestTask(Model):
         return {
             "id": self.id,
             "name": self.name,
-            "interval": self.interval,
-            "random_interval_seconds_min": self.random_interval_seconds_min,
-            "random_interval_seconds_max": self.random_interval_seconds_max,
             "start_time": self.start_time,
-            "user_id": self.user.id if self.user else None,
+            "user_id": self.user_id,
             "request_url": self.request_url,
             "callback_url": self.callback_url,
             "callback_token": self.callback_token,

@@ -19,9 +19,6 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
     # 创建请求任务
     task = await RequestTask.create(
         name=task_data.name,
-        interval=task_data.interval,
-        random_interval_seconds_min=task_data.random_interval_seconds_min,
-        random_interval_seconds_max=task_data.random_interval_seconds_max,
         user_id=current_user.id,
         start_time=datetime.fromtimestamp(task_data.start_time),
         request_url=task_data.request_url,
@@ -64,7 +61,7 @@ async def delete_task(task_id: int, current_user: User = Depends(login_require))
 
 router = APIRouter()
 
-router.add_api_route("/", get_tasks, methods=["GET"])
-router.add_api_route("/", create_task, methods=["POST"])
+router.add_api_route("", get_tasks, methods=["GET"])
+router.add_api_route("", create_task, methods=["POST"])
 router.add_api_route("/{task_id}", get_task, methods=["GET"])
 router.add_api_route("/{task_id}", delete_task, methods=["DELETE"])
