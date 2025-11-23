@@ -5,13 +5,14 @@ from passlib.hash import pbkdf2_sha256
 from tortoise.models import Model
 from tortoise import fields
 from tortoise.exceptions import DoesNotExist
+from scheduler_service.utils.logger import logger
 
 
 class User(Model):
     id = fields.IntField(pk=True)
-    name = fields.CharField(max_length=32)
+    name = fields.CharField(max_length=32, unique=True)
     password_hash = fields.CharField(max_length=256)
-    email = fields.CharField(max_length=32)
+    email = fields.CharField(max_length=32, unique=True)
     verify = fields.BooleanField(default=False)
     register_time = fields.DatetimeField(auto_now_add=True)
     login_time = fields.DatetimeField(null=True)
@@ -35,27 +36,29 @@ class User(Model):
     def verify_password(self, password: str) -> bool:
         return pbkdf2_sha256.verify(password, self.password_hash)
 
-    def generate_auth_token(self) -> str:
-        from scheduler_service.config import Config
+    def generate_auth_token(self, secret_key: str) -> str:
         return jwt.encode({'id': self.id, 'flag': 'auth'},
-                          Config.SECRET_KEY,
+                          secret_key,
                           algorithm='HS256')
 
     @classmethod
-    async def verify_auth_token(cls, token: str):
-        from scheduler_service.config import Config
+    async def verify_auth_token(cls, token: str, secret_key: str):
+        print(f"DEBUG: verify_auth_token received secret_key: {secret_key}") # Temporary print for debugging
         try:
             data = jwt.decode(token,
-                              Config.SECRET_KEY,
+                              secret_key,
                               algorithms=['HS256'])
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Token verification error (jwt.decode): {e}")
             return False
         else:
             if data['flag'] != 'auth':
+                logger.debug("Token verification error: Invalid flag")
                 return False
             try:
                 return await cls.get(id=data['id'])
             except DoesNotExist:
+                logger.debug("Token verification error: User does not exist for ID")
                 return False
 
     def to_dict(self) -> dict:

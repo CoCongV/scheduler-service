@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
-from fastapi import HTTPException, status, Depends, APIRouter
-from tortoise.exceptions import DoesNotExist
+from fastapi import HTTPException, status, Depends, APIRouter, Request
+from tortoise.exceptions import DoesNotExist, IntegrityError
 from scheduler_service.api.decorators import login_require
 from scheduler_service.models import User
 
@@ -50,31 +50,31 @@ class TokenResponse(BaseModel):
 
 async def create_user(user_data: UserCreate):
     """创建新用户"""
-    # 检查用户名是否已存在
-    existing_user = await User.filter(name=user_data.name).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户名已存在"
+    try:
+        # 创建用户
+        password_hash = User.hash_password(user_data.password)
+        user = await User.create(
+            name=user_data.name,
+            password_hash=password_hash,
+            email=user_data.email
         )
-
-    # 检查邮箱是否已存在
-    existing_email = await User.filter(email=user_data.email).first()
-    if existing_email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邮箱已存在"
-        )
-
-    # 创建用户
-    password_hash = User.hash_password(user_data.password)
-    user = await User.create(
-        name=user_data.name,
-        password_hash=password_hash,
-        email=user_data.email
-    )
-
-    return {'uid': user.id}
+        return {'uid': user.id}
+    except IntegrityError as e:
+        if "name" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="用户名已存在"
+            )
+        elif "email" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="邮箱已存在"
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="创建用户失败"
+            )
 
 
 async def get_current_user_info(current_user: User = Depends(login_require)):
@@ -112,7 +112,7 @@ async def delete_user(current_user: User = Depends(login_require)):
     return {"message": "用户已删除"}
 
 
-async def get_token(token_data: TokenRequest):
+async def get_token(token_data: TokenRequest, request: Request):
     """获取认证token"""
     # 验证请求参数
     if not token_data.name and not token_data.email:
@@ -146,14 +146,15 @@ async def get_token(token_data: TokenRequest):
     await user.ping()
 
     # 生成token
-    token = user.generate_auth_token()
+    secret_key = request.app.config.get("SECRET_KEY")
+    token = user.generate_auth_token(secret_key)
 
     return {"token": token}
 
 router = APIRouter()
 
 # 用户管理
-router.add_api_route("/", create_user, methods=["POST"])
+router.add_api_route("", create_user, methods=["POST"])
 router.add_api_route("/me", get_current_user_info, methods=["GET"])
 router.add_api_route("/me", update_user, methods=["PUT"])
 router.add_api_route("/me", delete_user, methods=["DELETE"])
