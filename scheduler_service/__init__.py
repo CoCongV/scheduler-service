@@ -5,13 +5,16 @@ from tortoise import Tortoise
 # 移除Sanic相关的create_app函数
 
 
-def setup_dramatiq(config):
+def setup_dramatiq(config, broker=None):
     """初始化Dramatiq消息队列"""
-    rabbitmq_broker = RabbitmqBroker(
-        url=f"amqp://{config.get('RABBITMQ_USER')}:{config.get('RABBITMQ_PASSWORD')}@{config.get('RABBITMQ_HOST')}:{config.get('RABBITMQ_PORT')}/{config.get('RABBITMQ_VHOST')}"
-    )
-    # 设置为默认broker
-    dramatiq.set_broker(rabbitmq_broker)
+    if broker is None:
+        rabbitmq_broker = RabbitmqBroker(
+            url=f"amqp://{config.get('RABBITMQ_USER')}:{config.get('RABBITMQ_PASSWORD')}@{config.get('RABBITMQ_HOST')}:{config.get('RABBITMQ_PORT')}/{config.get('RABBITMQ_VHOST')}"
+        )
+        # 设置为默认broker
+        dramatiq.set_broker(rabbitmq_broker)
+    else:
+        dramatiq.set_broker(broker)
 
 
 def close_dramatiq():

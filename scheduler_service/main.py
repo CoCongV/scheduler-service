@@ -3,9 +3,11 @@ import os
 import tomllib  # Python 3.11+ 的 tomllib 模块用于读取 TOML
 from typing import Any, AsyncGenerator
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from tortoise.contrib.fastapi import register_tortoise
+from tortoise import Tortoise
+from tortoise.exceptions import DoesNotExist, IntegrityError
 
 from scheduler_service.config import Config
 from scheduler_service.api import setup_routes
@@ -17,7 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期管理"""
     # 启动时执行
     await setup_dbs(app)
-    setup_dramatiq(app.config)
+    # Dramatiq will be set up by the app fixture in tests or via external config in production
     yield
     # 关闭时执行
     await close_dbs()
@@ -84,6 +86,21 @@ def create_app(config: Any = None) -> FastAPI:
     # 注册路由
     setup_routes(app)
 
+    # 注册异常处理器
+    @app.exception_handler(DoesNotExist)
+    async def does_not_exist_exception_handler(request: Request, exc: DoesNotExist):
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": str(exc)},
+        )
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_exception_handler(request: Request, exc: IntegrityError):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={"detail": [{"loc": [], "msg": str(exc), "type": "IntegrityError"}]},
+        )
+
     # 跨域配置
     app.add_middleware(
         CORSMiddleware,
@@ -105,13 +122,12 @@ async def setup_dbs(app: FastAPI):
         raise ValueError("PostgreSQL数据库URL未配置，请设置POSTGRES_URL、PG_URL或DB_URL")
 
     # PostgreSQL - Tortoise ORM (使用官方实现)
-    register_tortoise(
-        app=app,
+    await Tortoise.init(
         db_url=db_url,
         modules={"models": ["scheduler_service.models"]},
-        generate_schemas=True,  # 开发环境使用，生产环境应使用迁移
-        add_exception_handlers=True
     )
+    # 生成数据库架构（仅开发环境建议）
+    await Tortoise.generate_schemas()
 
 
 async def close_dbs():

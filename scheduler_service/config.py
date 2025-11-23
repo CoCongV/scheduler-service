@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 import json
 
 
@@ -11,10 +12,11 @@ class CustomJsonEncoder(json.JSONEncoder):
 
 class Config:
     NAME = "scheduler_service"
-    PG_URL = "postgresql://localhost/scheduler"
+    PG_URL = "postgresql://postgres:postgres@localhost:5432/scheduler"
     SECRET_KEY = 'your_secret_key'
     RESTFUL_JSON = {"cls": CustomJsonEncoder}
-    
+    LOG_LEVEL = logging.DEBUG
+
     # RabbitMQ配置默认值
     RABBITMQ_USER = "guest"
     RABBITMQ_PASSWORD = "guest"

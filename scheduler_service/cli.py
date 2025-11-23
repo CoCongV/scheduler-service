@@ -104,5 +104,60 @@ def init_db():
     run_async(init_tables())
 
 
+@scheduler.command()
+@click.option('--path', '-p', help='要测试的路径，默认为tests/')
+@click.option('--coverage', '-c', is_flag=True, help='生成覆盖率报告')
+@click.option('--verbose', '-v', is_flag=True, help='显示详细输出')
+@click.option('--parallel', '-n', type=int, help='并行执行的进程数')
+@click.option(
+    "--coverage-threshold", "-t",
+    type=int,
+    default=80,
+    help="覆盖率阈值，默认为80%%"
+)
+def test(path, coverage, verbose, parallel, coverage_threshold):
+    """启动覆盖率测试"""
+    import subprocess
+    # 构建pytest命令
+    cmd = [sys.executable, "-m", "pytest"]
+    
+    # 添加测试路径
+    if path:
+        cmd.append(path)
+    else:
+        cmd.append("tests/")
+    
+    # 添加覆盖率选项
+    if coverage:
+        cmd.extend([
+            "--cov=scheduler_service",
+            "--cov-report=term-missing",
+            "--cov-report=html:htmlcov",
+            "--cov-report=xml"
+        ])
+        
+        # 添加覆盖率阈值
+        if coverage_threshold:
+            cmd.append(f"--cov-fail-under={coverage_threshold}")
+    
+    # 添加详细输出
+    if verbose:
+        cmd.append("-v")
+    
+    # 添加并行执行
+    if parallel:
+        cmd.append(f"-n={parallel}")
+
+    click.echo(f"Running command: {' '.join(cmd)}")
+    result = subprocess.run(cmd)
+
+    # 如果生成了HTML覆盖率报告，显示路径
+    if coverage and result.returncode == 0:
+        click.echo("\nHTML coverage report generated in htmlcov/index.html")
+    
+    sys.exit(result.returncode)
+
+
+
 if __name__ == '__main__':
     scheduler()

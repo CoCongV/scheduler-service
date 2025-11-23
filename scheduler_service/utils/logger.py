@@ -1,6 +1,7 @@
 import logging
 import sys
 from logging import Formatter, Logger, StreamHandler
+from scheduler_service.config import Config
 
 # 定义日志颜色
 COLORS = {
@@ -38,17 +39,21 @@ class ColoredFormatter(Formatter):
         return result
 
 
-def get_logger(name: str = 'scheduler-service', level: int = logging.INFO) -> Logger:
+def get_logger(name: str = 'scheduler-service', level: int = None) -> Logger:
     """
     获取配置好的logger
 
     Args:
         name: logger名称，默认'scheduler-service'
-        level: 日志级别
+        level: 日志级别，如果为None则从Config中读取
 
     Returns:
         配置好的Logger实例
     """
+    # 确定日志级别
+    if level is None:
+        level = Config.LOG_LEVEL
+
     # 创建logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -57,7 +62,7 @@ def get_logger(name: str = 'scheduler-service', level: int = logging.INFO) -> Lo
     if not logger.handlers:
         # 创建handler，输出到控制台
         stream_handler = StreamHandler(sys.stdout)
-        stream_handler.setLevel(level)
+        stream_handler.setLevel(level) # 现在使用正确的level值
 
         # 创建带颜色的formatter
         formatter = ColoredFormatter(
