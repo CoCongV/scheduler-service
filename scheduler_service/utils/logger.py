@@ -1,6 +1,7 @@
 import logging
 import sys
 from logging import Formatter, Logger, StreamHandler
+
 from scheduler_service.config import Config
 
 # 定义日志颜色

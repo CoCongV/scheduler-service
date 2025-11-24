@@ -1,6 +1,6 @@
-from datetime import datetime
-import logging
 import json
+import logging
+from datetime import datetime
 
 
 class CustomJsonEncoder(json.JSONEncoder):

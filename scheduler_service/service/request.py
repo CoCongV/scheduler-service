@@ -1,8 +1,9 @@
 import dramatiq
 import httpx
+
 from scheduler_service.constants import RequestStatus
-from scheduler_service.utils.logger import logger
 from scheduler_service.models import RequestTask
+from scheduler_service.utils.logger import logger
 
 # 定义全局session
 _session = None

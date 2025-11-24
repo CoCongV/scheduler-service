@@ -1,6 +1,7 @@
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
-from fastapi import HTTPException, status, Depends, APIRouter, Request
 from tortoise.exceptions import DoesNotExist, IntegrityError
+
 from scheduler_service.api.decorators import login_require
 from scheduler_service.models import User
 

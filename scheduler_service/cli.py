@@ -1,12 +1,12 @@
-import sys
 import logging
+import sys
 
 import click
-from tortoise import run_async, Tortoise
+from tortoise import Tortoise, run_async
 
+from scheduler_service import close_tortoise, setup_tortoise
 from scheduler_service.main import create_app, get_config
 from scheduler_service.models import User
-from scheduler_service import setup_tortoise, close_tortoise
 
 
 @click.group()
@@ -117,6 +117,7 @@ def init_db():
 def test(path, coverage, verbose, parallel, coverage_threshold):
     """启动覆盖率测试"""
     import subprocess
+
     # 构建pytest命令
     cmd = [sys.executable, "-m", "pytest"]
 

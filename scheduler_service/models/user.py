@@ -2,9 +2,10 @@ from datetime import datetime
 
 import jwt
 from passlib.hash import pbkdf2_sha256
-from tortoise.models import Model
 from tortoise import fields
 from tortoise.exceptions import DoesNotExist
+from tortoise.models import Model
+
 from scheduler_service.utils.logger import logger
 
 
@@ -43,7 +44,8 @@ class User(Model):
 
     @classmethod
     async def verify_auth_token(cls, token: str, secret_key: str):
-        print(f"DEBUG: verify_auth_token received secret_key: {secret_key}") # Temporary print for debugging
+        # Temporary print for debugging
+        print(f"DEBUG: verify_auth_token received secret_key: {secret_key}")
         try:
             data = jwt.decode(token,
                               secret_key,

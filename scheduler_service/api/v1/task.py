@@ -1,9 +1,10 @@
 from datetime import datetime
-from fastapi import HTTPException, status, Depends, APIRouter
-from scheduler_service.api.decorators import login_require
-from scheduler_service.models import User, RequestTask
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from scheduler_service.api.decorators import login_require
 from scheduler_service.api.schemas import RequestTaskCreate
+from scheduler_service.models import RequestTask, User
 from scheduler_service.service.request import ping
 
 

@@ -1,11 +1,12 @@
-import pytest
-from datetime import datetime
 import time
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
-import httpx
 
-from scheduler_service.models import RequestTask
+import httpx
+import pytest
+
 from scheduler_service.constants import RequestStatus
+from scheduler_service.models import RequestTask
 from tests import const
 
 

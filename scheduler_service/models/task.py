@@ -1,5 +1,5 @@
-from tortoise.models import Model
 from tortoise import fields
+from tortoise.models import Model
 
 # 定义有效的HTTP方法列表
 VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
@@ -17,13 +17,15 @@ class RequestTask(Model):
     body = fields.JSONField(default=dict) 
 
     # 定义与User的外键关系
-    user = fields.ForeignKeyField('models.User', related_name='request_tasks', source_field='user_id')
+    user = fields.ForeignKeyField(
+        'models.User', related_name='request_tasks', source_field='user_id')
     user_id: int
 
     async def save(self, *args, **kwargs):
         # 验证method是否是有效的HTTP方法
         if self.method and self.method.upper() not in VALID_HTTP_METHODS:
-            raise ValueError(f"Invalid HTTP method: {self.method}. Must be one of {VALID_HTTP_METHODS}")
+            raise ValueError(
+                f"Invalid HTTP method: {self.method}. Must be one of {VALID_HTTP_METHODS}")
         # 保存前转换为大写
         self.method = self.method.upper()
         await super().save(*args, **kwargs)

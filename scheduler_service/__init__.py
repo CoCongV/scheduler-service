@@ -1,8 +1,8 @@
 import dramatiq
 from dramatiq.brokers.rabbitmq import RabbitmqBroker
 from tortoise import Tortoise
-from scheduler_service.broker import broker # 导入全局broker
 
+from scheduler_service.broker import broker  # 导入全局broker
 
 # 移除Sanic相关的create_app函数
 

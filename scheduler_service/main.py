@@ -1,17 +1,18 @@
 """FastAPI主应用文件"""
 import os
 import tomllib  # Python 3.11+ 的 tomllib 模块用于读取 TOML
-from typing import Any, AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any, AsyncGenerator
+
 from fastapi import FastAPI, Request, status
-from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from tortoise import Tortoise
 from tortoise.exceptions import DoesNotExist, IntegrityError
 
-from scheduler_service.config import Config
-from scheduler_service import setup_dramatiq, close_dramatiq, close_tortoise
+from scheduler_service import close_dramatiq, close_tortoise, setup_dramatiq
 from scheduler_service.api import setup_routes
+from scheduler_service.config import Config
 
 
 @asynccontextmanager

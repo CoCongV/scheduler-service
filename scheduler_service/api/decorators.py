@@ -1,13 +1,18 @@
 from typing import Optional
-from fastapi import Depends, HTTPException, status, Request # Added Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from fastapi import Depends, HTTPException, Request, status  # Added Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+
 from scheduler_service.models import User
 
 # 创建Bearer认证方案
 security = HTTPBearer(auto_error=False)
 
 
-async def login_require(request: Request, credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> User:
+async def login_require(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> User:
     """获取当前认证用户"""
     if not credentials:
         raise HTTPException(
