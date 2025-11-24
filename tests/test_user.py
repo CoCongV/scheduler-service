@@ -1,7 +1,3 @@
-import pytest
-import json
-from datetime import datetime
-
 from scheduler_service.models import User
 from tests import const
 

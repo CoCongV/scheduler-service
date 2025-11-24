@@ -1,7 +1,5 @@
-from datetime import datetime
-from typing import List
 from tortoise.models import Model
-from tortoise import fields, Tortoise
+from tortoise import fields
 
 # 定义有效的HTTP方法列表
 VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']

@@ -3,12 +3,8 @@ import os
 # 必须在导入任何 scheduler_service 模块之前设置此环境变量
 os.environ["UNIT_TESTS"] = "1"
 
-import asyncio
 import pytest
 from httpx import AsyncClient
-
-import dramatiq
-from dramatiq.brokers.stub import StubBroker 
 
 from scheduler_service.main import create_app, setup_dbs, close_dbs
 from scheduler_service.models import User

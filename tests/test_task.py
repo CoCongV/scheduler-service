@@ -1,16 +1,12 @@
 import pytest
-import asyncio
 from datetime import datetime
 import time
-import json
 from unittest.mock import AsyncMock, patch
 import httpx
 
-from scheduler_service.models import RequestTask, User
+from scheduler_service.models import RequestTask
 from scheduler_service.constants import RequestStatus
 from tests import const
-import dramatiq
-from dramatiq.brokers.stub import StubBroker
 
 
 @pytest.mark.asyncio
