@@ -70,6 +70,7 @@ class TestTaskModel:
         assert task_dict["body"] == {"data": "test"}
         await task.delete()
 
+
 @pytest.mark.asyncio
 class TestTaskAPI:
     """测试任务API端点"""
