@@ -7,16 +7,15 @@ RUN apk add --no-cache build-base postgresql-dev
 # Install Poetry
 RUN pip install poetry
 
-# Set up Poetry
+# Set up Poetry to create the venv in the project directory
 WORKDIR /app
 RUN poetry config virtualenvs.in-project true
 
-# Copy project files
+# Copy project definition and source code
 COPY poetry.lock pyproject.toml ./
 COPY scheduler_service ./scheduler_service
 
-# Install dependencies, including the project itself in editable mode
-# This creates a venv inside /app/.venv
+# Install dependencies, creating the .venv directory
 RUN poetry install --without dev
 
 
@@ -26,14 +25,18 @@ FROM python:3.14-alpine AS runner
 # Install only runtime system dependencies
 RUN apk add --no-cache libpq
 
-# Create a non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
+# Create a non-root user and its home directory
+RUN addgroup -S appgroup && adduser -S -h /home/appuser -G appgroup appuser
 
+# Set up the application directory and change ownership
 WORKDIR /home/appuser/app
+RUN chown appuser:appgroup /home/appuser/app
 
-# Copy the virtual environment from the builder stage
-COPY --from=builder /app/.venv /home/appuser/app/.venv
+# Copy the virtual environment from the builder stage and set ownership
+COPY --from=builder --chown=appuser:appgroup /app/.venv /home/appuser/app/.venv
+
+# Switch to the non-root user
+USER appuser
 
 # Make the venv available in the path
 ENV PATH="/home/appuser/app/.venv/bin:$PATH"
