@@ -29,23 +29,23 @@ def get_config():
     """获取配置：首先尝试从运行目录下读取config.toml文件，若不存在则使用默认配置"""
     # 获取默认配置
     default_config = Config.to_dict()
-    
+
     # 从运行目录获取config.toml文件路径
     config_path = os.path.join(os.getcwd(), "config.toml")
-    
+
     # 如果config.toml文件存在，则读取它并更新默认配置
     if os.path.exists(config_path):
         try:
             with open(config_path, "rb") as f:
                 # 使用tomllib读取TOML文件
                 config_data = tomllib.load(f)
-                
+
                 # 更新默认配置
                 default_config.update(config_data)
         except Exception as e:
             # 在实际应用中，这里应该使用logger记录错误
             print(f"读取config.toml时出错: {e}")
-    
+
     return default_config
 
 
@@ -53,7 +53,7 @@ def create_app(config: Any = None) -> FastAPI:
     """创建FastAPI应用"""
     # 获取默认配置
     default_config = Config.to_dict()
-    
+
     # 如果传入了配置，则用传入的配置更新默认配置
     if config:
         # 如果传入的是类，获取其字典形式
@@ -64,7 +64,7 @@ def create_app(config: Any = None) -> FastAPI:
         else:
             # 尝试将其转换为字典
             config_dict = dict(config.__dict__)
-        
+
         # 更新默认配置
         default_config.update(config_dict)
     else:
@@ -128,7 +128,7 @@ async def setup_dbs(app: FastAPI):
     )
     # 生成数据库架构（仅开发环境建议）
     await Tortoise.generate_schemas()
-    
+
     # 初始化 Dramatiq
     setup_dramatiq(app.config)
 

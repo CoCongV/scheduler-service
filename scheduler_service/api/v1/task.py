@@ -29,10 +29,10 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
         method=task_data.method,
         body=task_data.body if task_data.body is not None else {}
     )
-    
+
     # 发送ping任务到消息队列
     ping.send(task.id)
-    
+
     return {
         'task_id': task.id
     }

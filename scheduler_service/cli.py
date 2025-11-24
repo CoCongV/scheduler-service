@@ -119,13 +119,13 @@ def test(path, coverage, verbose, parallel, coverage_threshold):
     import subprocess
     # 构建pytest命令
     cmd = [sys.executable, "-m", "pytest"]
-    
+
     # 添加测试路径
     if path:
         cmd.append(path)
     else:
         cmd.append("tests/")
-    
+
     # 添加覆盖率选项
     if coverage:
         cmd.extend([
@@ -134,15 +134,15 @@ def test(path, coverage, verbose, parallel, coverage_threshold):
             "--cov-report=html:htmlcov",
             "--cov-report=xml"
         ])
-        
+
         # 添加覆盖率阈值
         if coverage_threshold:
             cmd.append(f"--cov-fail-under={coverage_threshold}")
-    
+
     # 添加详细输出
     if verbose:
         cmd.append("-v")
-    
+
     # 添加并行执行
     if parallel:
         cmd.append(f"-n={parallel}")
@@ -153,7 +153,7 @@ def test(path, coverage, verbose, parallel, coverage_threshold):
     # 如果生成了HTML覆盖率报告，显示路径
     if coverage and result.returncode == 0:
         click.echo("\nHTML coverage report generated in htmlcov/index.html")
-    
+
     sys.exit(result.returncode)
 
 

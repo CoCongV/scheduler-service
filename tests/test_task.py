@@ -175,13 +175,13 @@ class TestTaskAPI:
         """测试未授权访问"""
         resp = await client.get(const.task_url)
         assert resp.status_code == 401
-        
+
         resp = await client.post(const.task_url, json={"name": "test", "start_time": time.time(), "request_url": "http://example.com"})
         assert resp.status_code == 401
-        
+
         resp = await client.get(f"{const.task_url}/1")
         assert resp.status_code == 401
-        
+
         resp = await client.delete(f"{const.task_url}/1")
         assert resp.status_code == 401
 
@@ -189,7 +189,7 @@ class TestTaskAPI:
         """测试无效的任务数据"""
         resp = await client.post(const.task_url, headers=headers, json={})
         assert resp.status_code == 422
-        
+
         resp = await client.post(const.task_url, headers=headers, json={
             "name": "invalid_method", "start_time": time.time(), "request_url": "http://example.com", "method": "INVALID_METHOD"
         })
@@ -205,13 +205,13 @@ class TestTaskAPI:
 
         user2_data = {"name": "user2", "password": "password", "email": "user2@test.com"}
         await client.post(const.user_url, json=user2_data)
-        
+
         resp = await client.post(const.auth_token_url, json={"name": "user2", "password": "password"})
         user2_headers = {"Authorization": f"Bearer {resp.json()['token']}"}
-        
+
         resp = await client.get(f"{const.task_url}/{task1_id}", headers=user2_headers)
         assert resp.status_code == 404
-        
+
         await client.delete(f"{const.task_url}/{task1_id}", headers=headers)
 
 
@@ -232,7 +232,7 @@ class TestDramatiqActors:
             mock_response = AsyncMock()
             mock_response.status_code = 200
             mock_response.aread.return_value = b'{"status": "success"}'
-            
+
             mock_session = AsyncMock()
             mock_session.get.return_value = mock_response
             mock_session.post.return_value = AsyncMock()
@@ -297,11 +297,11 @@ class TestDramatiqActors:
             mock_response = AsyncMock()
             mock_response.status_code = 200
             mock_response.aread.return_value = b'{"status": "success"}'
-            
+
             mock_session = AsyncMock()
             # 先设置默认的post返回值（用于回调）
             mock_session.post.return_value = AsyncMock()
-            
+
             # 设置特定方法的返回值（如果是POST，这会覆盖上面的设置）
             mock_method = getattr(mock_session, method.lower())
             mock_method.return_value = mock_response
@@ -324,7 +324,7 @@ class TestDramatiqActors:
                     mock_method.assert_any_call(**expected_kwargs)
                 else:
                     mock_method.assert_called_once_with(**expected_kwargs)
-                
+
                 # 验证回调
                 # 注意：如果method是POST，mock_session.post已经被上面的逻辑验证过一部分了
                 # 这里我们专门验证回调的那次调用
