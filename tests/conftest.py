@@ -1,15 +1,14 @@
 import os
+import pytest
+from httpx import AsyncClient
+from dramatiq import Worker
 
 # 必须在导入任何 scheduler_service 模块之前设置此环境变量
 os.environ["UNIT_TESTS"] = "1"
 
-import pytest
-from httpx import AsyncClient
-
-from scheduler_service.main import create_app, setup_dbs, close_dbs
-from scheduler_service.models import User
-from scheduler_service import setup_dramatiq, close_dramatiq
-from dramatiq import Worker 
+from scheduler_service.main import create_app, setup_dbs, close_dbs  # noqa: E402
+from scheduler_service.models import User  # noqa: E402
+from scheduler_service import setup_dramatiq, close_dramatiq  # noqa: E402
 
 
 @pytest.fixture
