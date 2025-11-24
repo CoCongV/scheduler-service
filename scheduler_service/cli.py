@@ -157,6 +157,5 @@ def test(path, coverage, verbose, parallel, coverage_threshold):
     sys.exit(result.returncode)
 
 
-
 if __name__ == '__main__':
     scheduler()

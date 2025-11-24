@@ -28,7 +28,6 @@ class TestTaskModel:
         assert task.method == "GET"
         await task.delete()
 
-
     async def test_task_method_validation(self, user):
         """测试HTTP方法验证"""
         for method in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']:
