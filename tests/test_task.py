@@ -113,10 +113,16 @@ class TestTaskAPI:
     async def test_get_tasks(self, client, headers, user):
         """测试获取任务列表"""
         task1 = await RequestTask.create(
-            name="task1", start_time=datetime.now(), user_id=user.id, request_url="http://example.com/1"
+            name="task1",
+            start_time=datetime.now(),
+            user_id=user.id,
+            request_url="http://example.com/1"
         )
         task2 = await RequestTask.create(
-            name="task2", start_time=datetime.now(), user_id=user.id, request_url="http://example.com/2"
+            name="task2",
+            start_time=datetime.now(),
+            user_id=user.id,
+            request_url="http://example.com/2"
         )
 
         resp = await client.get(const.task_url, headers=headers)
@@ -156,7 +162,10 @@ class TestTaskAPI:
     async def test_delete_task(self, client, headers, user):
         """测试删除任务"""
         task = await RequestTask.create(
-            name="delete_me", start_time=datetime.now(), user_id=user.id, request_url="http://example.com/delete"
+            name="delete_me",
+            start_time=datetime.now(),
+            user_id=user.id,
+            request_url="http://example.com/delete"
         )
         task_id = task.id
 
@@ -176,7 +185,11 @@ class TestTaskAPI:
         resp = await client.get(const.task_url)
         assert resp.status_code == 401
 
-        resp = await client.post(const.task_url, json={"name": "test", "start_time": time.time(), "request_url": "http://example.com"})
+        resp = await client.post(const.task_url, json={
+            "name": "test",
+            "start_time": time.time(),
+            "request_url": "http://example.com"
+        })
         assert resp.status_code == 401
 
         resp = await client.get(f"{const.task_url}/1")
@@ -191,14 +204,19 @@ class TestTaskAPI:
         assert resp.status_code == 422
 
         resp = await client.post(const.task_url, headers=headers, json={
-            "name": "invalid_method", "start_time": time.time(), "request_url": "http://example.com", "method": "INVALID_METHOD"
+            "name": "invalid_method",
+            "start_time": time.time(),
+            "request_url": "http://example.com",
+            "method": "INVALID_METHOD"
         })
         assert resp.status_code == 422
 
     async def test_user_isolation(self, client, headers, user):
         """测试用户任务隔离"""
         resp = await client.post(const.task_url, headers=headers, json={
-            "name": "user1_task", "start_time": time.time(), "request_url": "http://example.com/user1"
+            "name": "user1_task",
+            "start_time": time.time(),
+            "request_url": "http://example.com/user1"
         })
         assert resp.status_code == 200
         task1_id = resp.json()["task_id"]
@@ -206,7 +224,10 @@ class TestTaskAPI:
         user2_data = {"name": "user2", "password": "password", "email": "user2@test.com"}
         await client.post(const.user_url, json=user2_data)
 
-        resp = await client.post(const.auth_token_url, json={"name": "user2", "password": "password"})
+        resp = await client.post(const.auth_token_url, json={
+            "name": "user2",
+            "password": "password"
+        })
         user2_headers = {"Authorization": f"Bearer {resp.json()['token']}"}
 
         resp = await client.get(f"{const.task_url}/{task1_id}", headers=user2_headers)
@@ -228,7 +249,10 @@ class TestDramatiqActors:
         mock_task.header = {}
         mock_task.callback_url = "http://callback.com/status"
 
-        with patch('scheduler_service.models.RequestTask.get_or_none', AsyncMock(return_value=mock_task)):
+        with patch(
+            'scheduler_service.models.RequestTask.get_or_none',
+            AsyncMock(return_value=mock_task)
+        ):
             mock_response = AsyncMock()
             mock_response.status_code = 200
             mock_response.aread.return_value = b'{"status": "success"}'
@@ -264,9 +288,15 @@ class TestDramatiqActors:
         mock_task.header = {}
         mock_task.callback_url = "http://callback.com/status"
 
-        with patch('scheduler_service.models.RequestTask.get_or_none', AsyncMock(return_value=mock_task)):
+        with patch(
+            'scheduler_service.models.RequestTask.get_or_none',
+            AsyncMock(return_value=mock_task)
+        ):
             mock_session = AsyncMock()
-            mock_session.get.side_effect = httpx.RequestError("Network error", request=httpx.Request("GET", mock_task.request_url))
+            mock_session.get.side_effect = httpx.RequestError(
+                "Network error",
+                request=httpx.Request("GET", mock_task.request_url)
+            )
             mock_session.post.return_value = AsyncMock()
 
             with patch('scheduler_service.service.request.get_session', return_value=mock_session):
@@ -293,7 +323,10 @@ class TestDramatiqActors:
         mock_task.header = {"Content-Type": "application/json"}
         mock_task.callback_url = "http://callback.com/status"
 
-        with patch('scheduler_service.models.RequestTask.get_or_none', AsyncMock(return_value=mock_task)):
+        with patch(
+            'scheduler_service.models.RequestTask.get_or_none',
+            AsyncMock(return_value=mock_task)
+        ):
             mock_response = AsyncMock()
             mock_response.status_code = 200
             mock_response.aread.return_value = b'{"status": "success"}'
