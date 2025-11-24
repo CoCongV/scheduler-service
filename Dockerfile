@@ -1,68 +1,45 @@
-# Stage 1: Builder
-# This stage installs build dependencies, creates a virtual environment, and builds the wheels.
+# Stage 1: Builder - Build the application and dependencies
 FROM python:3.14-alpine AS builder
 
-# Install poetry
-RUN pip install poetry
-
-# Install build dependencies for Python packages
-# build-base is for C extensions, postgresql-dev for asyncpg
+# Install system build dependencies
 RUN apk add --no-cache build-base postgresql-dev
 
-# Set up a virtual environment that will be copied to the runner
-ENV VIRTUAL_ENV=/opt/venv
-RUN python -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Install Poetry
+RUN pip install poetry
 
-# Set Poetry config to not create a virtual env inside the project
-RUN poetry config virtualenvs.create false
+# Set up Poetry
+WORKDIR /app
+RUN poetry config virtualenvs.in-project true
 
 # Copy project files
-WORKDIR /app
 COPY poetry.lock pyproject.toml ./
-
-# Install dependencies into the virtual environment
-RUN poetry install --without dev --no-root
-
-# Copy the application source code
 COPY scheduler_service ./scheduler_service
 
-# Build the wheel
-RUN poetry build
+# Install dependencies, including the project itself in editable mode
+# This creates a venv inside /app/.venv
+RUN poetry install --without dev
 
 
-# Stage 2: Runner
-# This stage creates the final lightweight image
+# Stage 2: Runner - Create the final lightweight image
 FROM python:3.14-alpine AS runner
 
-# Install only runtime dependencies
+# Install only runtime system dependencies
 RUN apk add --no-cache libpq
 
 # Create a non-root user for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
-# Set home directory for the new user
-ENV HOME=/home/appuser
-WORKDIR $HOME/app
-
-# Copy the built wheel from the builder stage
-COPY --from=builder /app/dist/*.whl .
+WORKDIR /home/appuser/app
 
 # Copy the virtual environment from the builder stage
-# Ensure the new user owns this directory
-COPY --from=builder --chown=appuser:appgroup /opt/venv /opt/venv
+COPY --from=builder /app/.venv /home/appuser/app/.venv
 
-# Install the application wheel into the virtual environment
-RUN /opt/venv/bin/pip install --no-cache-dir *.whl && \
-    rm -f *.whl
-
-# Make the venv available in the path for the appuser
-ENV PATH="/opt/venv/bin:$PATH"
-USER appuser
+# Make the venv available in the path
+ENV PATH="/home/appuser/app/.venv/bin:$PATH"
 
 # Expose the port
 EXPOSE 8000
 
 # Command to run the application
-# Use the scheduler CLI tool, as it's the standard way for this project
 CMD ["scheduler", "runserver", "--host", "0.0.0.0", "--port", "8000", "--no-debug"]
