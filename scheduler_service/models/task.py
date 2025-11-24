@@ -14,7 +14,7 @@ class RequestTask(Model):
     callback_token = fields.CharField(max_length=64, null=True)  # 用于callback_url登录的token
     header = fields.JSONField(null=True)  # HTTP请求头字段
     method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法
-    body = fields.JSONField(default=dict) 
+    body = fields.JSONField(default=dict)
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField(

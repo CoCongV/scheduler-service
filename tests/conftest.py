@@ -41,7 +41,7 @@ def stub_worker(stub_broker):
 
 
 @pytest.fixture
-async def app(): 
+async def app():
     """创建并启动测试应用"""
     # 使用测试数据库URL
     # 使用文件数据库以确保连接共享
@@ -59,7 +59,7 @@ async def app():
         "POSTGRES_URL": db_url,
         "SECRET_KEY": "test-secret-key",
         # 显式禁用 RabbitMQ 连接，防止 setup_dramatiq 尝试连接
-        "DRAMATIQ_URL": None 
+        "DRAMATIQ_URL": None
     }
 
     app = create_app(test_config)
@@ -76,7 +76,7 @@ async def app():
     await close_dbs()
 
     # 关闭Dramatiq连接
-    close_dramatiq() 
+    close_dramatiq()
 
     # 清理所有测试数据库文件
     if os.path.exists("test.db"):
