@@ -1,6 +1,6 @@
 # Scheduler Service
 
-[![Build Status](https://travis-ci.org/FX-HAO/scheduler-service.svg?branch=develop)](https://travis-ci.org/FX-HAO/scheduler-service)
+[![CI](https://github.com/CoCongV/scheduler-service/actions/workflows/ci.yml/badge.svg)](https://github.com/CoCongV/scheduler-service/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/github/CoCongV/scheduler-service/graph/badge.svg?token=tvuEjqNQss)](https://codecov.io/github/CoCongV/scheduler-service)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/8533c1d0460d4106a7abca744882d209)](https://app.codacy.com/gh/CoCongV/scheduler-service/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 

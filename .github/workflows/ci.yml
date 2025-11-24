@@ -51,3 +51,12 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./coverage.xml
         fail_ci_if_error: true
+
+  build-docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Build Docker image
+        run: docker build .
