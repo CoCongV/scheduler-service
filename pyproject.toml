@@ -38,6 +38,9 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 packages = [{include = "scheduler_service"}]
 
+[tool.coverage.run]
+omit = ["scheduler_service/cli.py"]
+
 [dependency-groups]
 dev = [
     "pylint (>=4.0.3,<5.0.0)",
