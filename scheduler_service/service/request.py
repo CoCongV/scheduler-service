@@ -12,7 +12,7 @@ def get_session():
     """获取httpx会话"""
     global _session
     if _session is None or _session.is_closed:
-        _session = httpx.AsyncClient()
+        _session = httpx.AsyncClient(timeout=60.0)
     return _session
 
 
@@ -95,7 +95,7 @@ async def ping(task_id):
 async def startup_worker():
     """worker启动时执行"""
     global _session
-    _session = httpx.AsyncClient()
+    _session = httpx.AsyncClient(timeout=60.0)
 
 
 @dramatiq.actor

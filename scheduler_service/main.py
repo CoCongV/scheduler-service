@@ -10,8 +10,8 @@ from tortoise import Tortoise
 from tortoise.exceptions import DoesNotExist, IntegrityError
 
 from scheduler_service.config import Config
-from scheduler_service.api import setup_routes
 from scheduler_service import setup_dramatiq, close_dramatiq, close_tortoise
+from scheduler_service.api import setup_routes
 
 
 @asynccontextmanager
@@ -128,6 +128,9 @@ async def setup_dbs(app: FastAPI):
     )
     # 生成数据库架构（仅开发环境建议）
     await Tortoise.generate_schemas()
+    
+    # 初始化 Dramatiq
+    setup_dramatiq(app.config)
 
 
 async def close_dbs():

@@ -1,19 +1,24 @@
 import dramatiq
 from dramatiq.brokers.rabbitmq import RabbitmqBroker
 from tortoise import Tortoise
+from scheduler_service.broker import broker # 导入全局broker
+
 
 # 移除Sanic相关的create_app函数
 
 
-def setup_dramatiq(config, broker=None):
+def setup_dramatiq(config):
     """初始化Dramatiq消息队列"""
-    if broker is None:
-        rabbitmq_broker = RabbitmqBroker(
-            url=f"amqp://{config.get('RABBITMQ_USER')}:{config.get('RABBITMQ_PASSWORD')}@{config.get('RABBITMQ_HOST')}:{config.get('RABBITMQ_PORT')}/{config.get('RABBITMQ_VHOST')}"
-        )
-        # 设置为默认broker
-        dramatiq.set_broker(rabbitmq_broker)
+    # 尝试从配置中获取URL
+    dramatiq_url = config.get("DRAMATIQ_URL")
+
+    if dramatiq_url:
+        # 如果提供了URL，创建一个新的RabbitmqBroker并设为全局broker
+        # 这允许通过config覆盖默认的连接设置
+        new_broker = RabbitmqBroker(url=dramatiq_url)
+        dramatiq.set_broker(new_broker)
     else:
+        # 否则使用默认的全局broker
         dramatiq.set_broker(broker)
 
 

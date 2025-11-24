@@ -1,14 +1,19 @@
+import os
+
+# 必须在导入任何 scheduler_service 模块之前设置此环境变量
+os.environ["UNIT_TESTS"] = "1"
+
 import asyncio
 import pytest
 from httpx import AsyncClient
-import os
 
 import dramatiq
-from dramatiq.brokers.stub import StubBroker # Use StubBroker which is an InMemoryBroker for dramatiq 1.x+
+from dramatiq.brokers.stub import StubBroker 
 
 from scheduler_service.main import create_app, setup_dbs, close_dbs
 from scheduler_service.models import User
 from scheduler_service import setup_dramatiq, close_dramatiq
+from dramatiq import Worker 
 
 
 @pytest.fixture
@@ -21,17 +26,25 @@ async def client(app):
 
 
 @pytest.fixture
-def dramatiq_broker():
+def stub_broker():
     """使用内存broker进行Dramatiq测试"""
-    broker = StubBroker()
-    dramatiq.set_broker(broker)
-    yield broker
-    broker.flush_all() # 清理所有队列
-    dramatiq.set_broker(None) # 重置broker
+    # 现在 broker.py 会因为 UNIT_TESTS=1 返回 StubBroker
+    from scheduler_service.broker import broker
+    broker.flush_all()
+    return broker
 
 
 @pytest.fixture
-async def app(dramatiq_broker): # Inject the dramatiq_broker fixture
+def stub_worker(stub_broker):
+    """使用内存worker进行Dramatiq测试"""
+    worker = Worker(stub_broker, worker_timeout=100)
+    worker.start()
+    yield worker
+    worker.stop()
+
+
+@pytest.fixture
+async def app(): 
     """创建并启动测试应用"""
     # 使用测试数据库URL
     # 使用文件数据库以确保连接共享
@@ -47,7 +60,9 @@ async def app(dramatiq_broker): # Inject the dramatiq_broker fixture
         
     test_config = {
         "POSTGRES_URL": db_url,
-        "SECRET_KEY": "test-secret-key" # Add a test secret key
+        "SECRET_KEY": "test-secret-key",
+        # 显式禁用 RabbitMQ 连接，防止 setup_dramatiq 尝试连接
+        "DRAMATIQ_URL": None 
     }
     
     app = create_app(test_config)
@@ -55,8 +70,8 @@ async def app(dramatiq_broker): # Inject the dramatiq_broker fixture
     # 手动初始化数据库，确保在测试开始前数据库已就绪
     await setup_dbs(app)
     
-    # Dramatiq setup with in-memory broker
-    setup_dramatiq(app.config, dramatiq_broker) # Pass the in-memory broker here
+    # Dramatiq setup
+    setup_dramatiq(app.config)
     
     yield app
     
@@ -64,7 +79,7 @@ async def app(dramatiq_broker): # Inject the dramatiq_broker fixture
     await close_dbs()
     
     # 关闭Dramatiq连接
-    close_dramatiq() # Ensure dramatiq is closed
+    close_dramatiq() 
         
     # 清理所有测试数据库文件
     if os.path.exists("test.db"):

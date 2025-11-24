@@ -75,7 +75,6 @@ class TestTaskModel:
         assert task_dict["body"] == {"data": "test"}
         await task.delete()
 
-
 @pytest.mark.asyncio
 class TestTaskAPI:
     """测试任务API端点"""
@@ -107,23 +106,10 @@ class TestTaskAPI:
         response_data = resp.json()
         assert "task_id" in response_data
 
-        # 验证模拟的 client 被正确调用
-        # 验证请求任务
-        mock_client.post.assert_any_call(
-            url='http://example.com',
-            headers={'Content-Type': 'application/json'},
-            json={'key': 'value'}
-        )
-        # 验证回调
-        mock_client.post.assert_any_call(
-            'http://example.com/callback',
-            json={
-                'response': 'ok',
-                'code': 200,
-                'exception': None,
-                'status': RequestStatus.COMPLETE
-            }
-        )
+        # 验证任务被放入队列
+        # 由于没有启动 worker，任务应该留在队列中
+        from scheduler_service.broker import broker
+        assert broker.queues["default"].qsize() == 1
 
         task_id = response_data["task_id"]
         await client.delete(f"{const.task_url}/{task_id}", headers=headers)
@@ -237,7 +223,7 @@ class TestTaskAPI:
 class TestDramatiqActors:
     """测试Dramatiq Actors"""
 
-    async def test_ping_actor_success(self, dramatiq_broker: StubBroker):
+    async def test_ping_actor_success(self, stub_broker, stub_worker): # 恢复fixture
         mock_task = AsyncMock(spec=RequestTask)
         mock_task.id = 1
         mock_task.request_url = "http://test.com/api"
@@ -259,11 +245,8 @@ class TestDramatiqActors:
                 from scheduler_service.service.request import ping
                 ping.send(mock_task.id)
 
-                dramatiq_broker.join("default")
-                worker = dramatiq.Worker(dramatiq_broker, worker_threads=1)
-                worker.start()
-                worker.join()
-                worker.stop()
+                # 等待任务完成
+                stub_broker.join(queue_name=ping.queue_name)
 
                 mock_session.get.assert_called_once_with(url=mock_task.request_url, headers={})
                 mock_session.post.assert_called_once_with(
@@ -276,7 +259,7 @@ class TestDramatiqActors:
                     }
                 )
 
-    async def test_ping_actor_http_error(self, dramatiq_broker: StubBroker):
+    async def test_ping_actor_http_error(self, stub_broker, stub_worker): # 恢复fixture
         mock_task = AsyncMock(spec=RequestTask)
         mock_task.id = 2
         mock_task.request_url = "http://nonexistent.com/api"
@@ -294,14 +277,67 @@ class TestDramatiqActors:
                 from scheduler_service.service.request import ping
                 ping.send(mock_task.id)
 
-                dramatiq_broker.join("default")
-                worker = dramatiq.Worker(dramatiq_broker, worker_threads=1)
-                worker.start()
-                worker.join()
-                worker.stop()
+                # 等待任务完成
+                stub_broker.join(queue_name=ping.queue_name)
 
                 mock_session.get.assert_called_once_with(url=mock_task.request_url, headers={})
                 mock_session.post.assert_called_once()
                 args, kwargs = mock_session.post.call_args
                 assert kwargs['json']['status'] == RequestStatus.FAIL
                 assert 'Network error' in kwargs['json']['exception']
+
+    @pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH", "GET"])
+    async def test_ping_actor_methods(self, method, stub_broker, stub_worker):
+        """测试不同HTTP方法的ping actor"""
+        mock_task = AsyncMock(spec=RequestTask)
+        mock_task.id = 3
+        mock_task.request_url = "http://test.com/api"
+        mock_task.method = method
+        mock_task.body = {"data": "test"} if method in ["POST", "PUT", "PATCH"] else None
+        mock_task.header = {"Content-Type": "application/json"}
+        mock_task.callback_url = "http://callback.com/status"
+
+        with patch('scheduler_service.models.RequestTask.get_or_none', AsyncMock(return_value=mock_task)):
+            mock_response = AsyncMock()
+            mock_response.status_code = 200
+            mock_response.aread.return_value = b'{"status": "success"}'
+            
+            mock_session = AsyncMock()
+            # 先设置默认的post返回值（用于回调）
+            mock_session.post.return_value = AsyncMock()
+            
+            # 设置特定方法的返回值（如果是POST，这会覆盖上面的设置）
+            mock_method = getattr(mock_session, method.lower())
+            mock_method.return_value = mock_response
+
+            with patch('scheduler_service.service.request.get_session', return_value=mock_session):
+                from scheduler_service.service.request import ping
+                ping.send(mock_task.id)
+
+                stub_broker.join(queue_name=ping.queue_name)
+
+                expected_kwargs = {
+                    'url': mock_task.request_url,
+                    'headers': mock_task.header
+                }
+                if mock_task.body:
+                    expected_kwargs['json'] = mock_task.body
+
+                # 对于POST方法，session.post会被调用两次（一次请求，一次回调）
+                if method == "POST":
+                    mock_method.assert_any_call(**expected_kwargs)
+                else:
+                    mock_method.assert_called_once_with(**expected_kwargs)
+                
+                # 验证回调
+                # 注意：如果method是POST，mock_session.post已经被上面的逻辑验证过一部分了
+                # 这里我们专门验证回调的那次调用
+                mock_session.post.assert_called_with(
+                    mock_task.callback_url,
+                    json={
+                        'response': '{"status": "success"}',
+                        'code': 200,
+                        'exception': None,
+                        'status': RequestStatus.COMPLETE
+                    }
+                )

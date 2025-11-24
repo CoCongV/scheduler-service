@@ -17,12 +17,7 @@ class Config:
     RESTFUL_JSON = {"cls": CustomJsonEncoder}
     LOG_LEVEL = logging.DEBUG
 
-    # RabbitMQ配置默认值
-    RABBITMQ_USER = "guest"
-    RABBITMQ_PASSWORD = "guest"
-    RABBITMQ_HOST = "localhost"
-    RABBITMQ_PORT = 5672
-    RABBITMQ_VHOST = "%2F"
+    DRAMATIQ_URL = "amqp://guest:guest@localhost:25672/%2F"
 
     @classmethod
     def to_dict(cls):
