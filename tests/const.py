@@ -1,4 +1,4 @@
-user_url = "/api/v1/users"
-auth_token_url = "/api/v1/users/token"
-user_me_url = "/api/v1/users/me"
-task_url = "/api/v1/tasks"
+USER_URL = "/api/v1/users"
+AUTH_TOKEN_URL = "/api/v1/users/token"
+USER_ME_URL = "/api/v1/users/me"
+TASK_URL = "/api/v1/tasks"

@@ -130,7 +130,7 @@ class TestUserAPI:
             "email": "api_test@test.com"
         }
 
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
         response_data = resp.json()
         assert "uid" in response_data
@@ -144,11 +144,11 @@ class TestUserAPI:
         }
 
         # 创建第一个用户
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
 
         # 尝试创建同名用户 (但邮箱不同)
-        resp = await client.post(const.user_url, json={
+        resp = await client.post(const.USER_URL, json={
             "name": "duplicate_user",
             "password": "password",
             "email": "dup_name_diff_email@test.com"
@@ -157,7 +157,7 @@ class TestUserAPI:
         assert "用户名已存在" in resp.json().get("detail", "")
 
         # 尝试创建同邮箱用户 (但用户名不同)
-        resp = await client.post(const.user_url, json={
+        resp = await client.post(const.USER_URL, json={
             "name": "different_name",
             "password": "password",
             "email": "duplicate@test.com"
@@ -173,11 +173,11 @@ class TestUserAPI:
             "password": "password",
             "email": "token_name@test.com"
         }
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
 
         # 获取令牌
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "token_name_test",
             "password": "password"
         })
@@ -193,11 +193,11 @@ class TestUserAPI:
             "password": "password",
             "email": "token_email@test.com"
         }
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
 
         # 获取令牌
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "email": "token_email@test.com",
             "password": "password"
         })
@@ -213,18 +213,18 @@ class TestUserAPI:
             "password": "password",
             "email": "invalid@test.com"
         }
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
 
         # 使用错误密码
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "invalid_test",
             "password": "wrong_password"
         })
         assert resp.status_code == 401
 
         # 使用不存在的用户
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "nonexistent_user",
             "password": "password"
         })
@@ -233,7 +233,7 @@ class TestUserAPI:
     async def test_get_token_missing_credentials(self, client):
         """测试缺少凭据时获取令牌"""
         # 不提供用户名或邮箱
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "password": "password"
         })
         assert resp.status_code == 400
@@ -247,11 +247,11 @@ class TestUserAPI:
             "password": "password",
             "email": "current_user@test.com"
         }
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
 
         # 获取令牌
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "current_user_test",
             "password": "password"
         })
@@ -260,7 +260,7 @@ class TestUserAPI:
         headers = {"Authorization": f"Bearer {token}"}
 
         # 获取用户信息
-        resp = await client.get(f"{const.user_url}/me", headers=headers)
+        resp = await client.get(f"{const.USER_URL}/me", headers=headers)
         assert resp.status_code == 200
         response_data = resp.json()
         assert response_data["name"] == "current_user_test"
@@ -275,11 +275,11 @@ class TestUserAPI:
             "password": "password",
             "email": "update@test.com"
         }
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
 
         # 获取令牌
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "update_test",
             "password": "password"
         })
@@ -292,7 +292,7 @@ class TestUserAPI:
             "name": "updated_name",
             "email": "updated@test.com"
         }
-        resp = await client.put(f"{const.user_url}/me", headers=headers, json=update_data)
+        resp = await client.put(f"{const.USER_URL}/me", headers=headers, json=update_data)
         assert resp.status_code == 200
         response_data = resp.json()
         assert response_data["name"] == "updated_name"
@@ -302,18 +302,18 @@ class TestUserAPI:
         password_data = {
             "password": "new_password"
         }
-        resp = await client.put(f"{const.user_url}/me", headers=headers, json=password_data)
+        resp = await client.put(f"{const.USER_URL}/me", headers=headers, json=password_data)
         assert resp.status_code == 200
 
         # 验证新密码
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "updated_name",
             "password": "new_password"
         })
         assert resp.status_code == 200
 
         # 验证旧密码不再有效
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "updated_name",
             "password": "password"
         })
@@ -327,11 +327,11 @@ class TestUserAPI:
             "password": "password",
             "email": "delete@test.com"
         }
-        resp = await client.post(const.user_url, json=user_data)
+        resp = await client.post(const.USER_URL, json=user_data)
         assert resp.status_code == 200
 
         # 获取令牌
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "delete_test",
             "password": "password"
         })
@@ -340,13 +340,13 @@ class TestUserAPI:
         headers = {"Authorization": f"Bearer {token}"}
 
         # 删除用户
-        resp = await client.delete(f"{const.user_url}/me", headers=headers)
+        resp = await client.delete(f"{const.USER_URL}/me", headers=headers)
         assert resp.status_code == 200
         response_data = resp.json()
         assert "用户已删除" in response_data.get("message", "")
 
         # 验证用户已被删除
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "delete_test",
             "password": "password"
         })
@@ -355,13 +355,13 @@ class TestUserAPI:
     async def test_unauthorized_access(self, client):
         """测试未授权访问"""
         # 不带认证头访问
-        resp = await client.get(f"{const.user_url}/me")
+        resp = await client.get(f"{const.USER_URL}/me")
         assert resp.status_code == 401
 
-        resp = await client.put(f"{const.user_url}/me", json={"name": "test"})
+        resp = await client.put(f"{const.USER_URL}/me", json={"name": "test"})
         assert resp.status_code == 401
 
-        resp = await client.delete(f"{const.user_url}/me")
+        resp = await client.delete(f"{const.USER_URL}/me")
         assert resp.status_code == 401
 
     async def test_invalid_token(self, client):
@@ -369,23 +369,23 @@ class TestUserAPI:
         # 使用无效令牌
         headers = {"Authorization": "invalid_token"}
 
-        resp = await client.get(f"{const.user_url}/me", headers=headers)
+        resp = await client.get(f"{const.USER_URL}/me", headers=headers)
         assert resp.status_code == 401
 
-        resp = await client.put(f"{const.user_url}/me", headers=headers, json={"name": "test"})
+        resp = await client.put(f"{const.USER_URL}/me", headers=headers, json={"name": "test"})
         assert resp.status_code == 401
 
-        resp = await client.delete(f"{const.user_url}/me", headers=headers)
+        resp = await client.delete(f"{const.USER_URL}/me", headers=headers)
         assert resp.status_code == 401
 
     async def test_invalid_user_data(self, client):
         """测试无效的用户数据"""
         # 缺少必需字段
-        resp = await client.post(const.user_url, json={})
+        resp = await client.post(const.USER_URL, json={})
         assert resp.status_code == 422
 
         # 无效邮箱
-        resp = await client.post(const.user_url, json={
+        resp = await client.post(const.USER_URL, json={
             "name": "test",
             "password": "password",
             "email": "invalid_email"

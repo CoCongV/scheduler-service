@@ -98,7 +98,7 @@ class TestTaskAPI:
             "body": {"key": "value"}
         }
 
-        resp = await client.post(const.task_url, headers=headers, json=task_data)
+        resp = await client.post(const.TASK_URL, headers=headers, json=task_data)
         assert resp.status_code == 200
         response_data = resp.json()
         assert "task_id" in response_data
@@ -109,7 +109,7 @@ class TestTaskAPI:
         assert broker.queues["default"].qsize() == 1
 
         task_id = response_data["task_id"]
-        await client.delete(f"{const.task_url}/{task_id}", headers=headers)
+        await client.delete(f"{const.TASK_URL}/{task_id}", headers=headers)
 
     async def test_get_tasks(self, client, headers, user):
         """测试获取任务列表"""
@@ -126,7 +126,7 @@ class TestTaskAPI:
             request_url="http://example.com/2"
         )
 
-        resp = await client.get(const.task_url, headers=headers)
+        resp = await client.get(const.TASK_URL, headers=headers)
         assert resp.status_code == 200
         response_data = resp.json()
         assert "tasks" in response_data
@@ -146,7 +146,7 @@ class TestTaskAPI:
             body={"test": "data"}
         )
 
-        resp = await client.get(f"{const.task_url}/{task.id}", headers=headers)
+        resp = await client.get(f"{const.TASK_URL}/{task.id}", headers=headers)
         assert resp.status_code == 200
         response_data = resp.json()
         assert response_data["name"] == "single_task"
@@ -157,7 +157,7 @@ class TestTaskAPI:
 
     async def test_get_nonexistent_task(self, client, headers):
         """测试获取不存在的任务"""
-        resp = await client.get(f"{const.task_url}/99999", headers=headers)
+        resp = await client.get(f"{const.TASK_URL}/99999", headers=headers)
         assert resp.status_code == 404
 
     async def test_delete_task(self, client, headers, user):
@@ -170,41 +170,41 @@ class TestTaskAPI:
         )
         task_id = task.id
 
-        resp = await client.delete(f"{const.task_url}/{task_id}", headers=headers)
+        resp = await client.delete(f"{const.TASK_URL}/{task_id}", headers=headers)
         assert resp.status_code == 200
 
-        resp = await client.get(f"{const.task_url}/{task_id}", headers=headers)
+        resp = await client.get(f"{const.TASK_URL}/{task_id}", headers=headers)
         assert resp.status_code == 404
 
     async def test_delete_nonexistent_task(self, client, headers):
         """测试删除不存在的任务"""
-        resp = await client.delete(f"{const.task_url}/99999", headers=headers)
+        resp = await client.delete(f"{const.TASK_URL}/99999", headers=headers)
         assert resp.status_code == 404
 
     async def test_unauthorized_access(self, client):
         """测试未授权访问"""
-        resp = await client.get(const.task_url)
+        resp = await client.get(const.TASK_URL)
         assert resp.status_code == 401
 
-        resp = await client.post(const.task_url, json={
+        resp = await client.post(const.TASK_URL, json={
             "name": "test",
             "start_time": time.time(),
             "request_url": "http://example.com"
         })
         assert resp.status_code == 401
 
-        resp = await client.get(f"{const.task_url}/1")
+        resp = await client.get(f"{const.TASK_URL}/1")
         assert resp.status_code == 401
 
-        resp = await client.delete(f"{const.task_url}/1")
+        resp = await client.delete(f"{const.TASK_URL}/1")
         assert resp.status_code == 401
 
     async def test_invalid_task_data(self, client, headers):
         """测试无效的任务数据"""
-        resp = await client.post(const.task_url, headers=headers, json={})
+        resp = await client.post(const.TASK_URL, headers=headers, json={})
         assert resp.status_code == 422
 
-        resp = await client.post(const.task_url, headers=headers, json={
+        resp = await client.post(const.TASK_URL, headers=headers, json={
             "name": "invalid_method",
             "start_time": time.time(),
             "request_url": "http://example.com",
@@ -214,7 +214,7 @@ class TestTaskAPI:
 
     async def test_user_isolation(self, client, headers, user):
         """测试用户任务隔离"""
-        resp = await client.post(const.task_url, headers=headers, json={
+        resp = await client.post(const.TASK_URL, headers=headers, json={
             "name": "user1_task",
             "start_time": time.time(),
             "request_url": "http://example.com/user1"
@@ -223,18 +223,18 @@ class TestTaskAPI:
         task1_id = resp.json()["task_id"]
 
         user2_data = {"name": "user2", "password": "password", "email": "user2@test.com"}
-        await client.post(const.user_url, json=user2_data)
+        await client.post(const.USER_URL, json=user2_data)
 
-        resp = await client.post(const.auth_token_url, json={
+        resp = await client.post(const.AUTH_TOKEN_URL, json={
             "name": "user2",
             "password": "password"
         })
         user2_headers = {"Authorization": f"Bearer {resp.json()['token']}"}
 
-        resp = await client.get(f"{const.task_url}/{task1_id}", headers=user2_headers)
+        resp = await client.get(f"{const.TASK_URL}/{task1_id}", headers=user2_headers)
         assert resp.status_code == 404
 
-        await client.delete(f"{const.task_url}/{task1_id}", headers=headers)
+        await client.delete(f"{const.TASK_URL}/{task1_id}", headers=headers)
 
 
 @pytest.mark.asyncio
