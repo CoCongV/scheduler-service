@@ -20,6 +20,7 @@ class RequestTask(Model):
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField('models.User', related_name='request_tasks', source_field='user_id')
+    user_id: int
 
     async def save(self, *args, **kwargs):
         # 验证method是否是有效的HTTP方法
