@@ -2,8 +2,7 @@
 
 [![Build Status](https://travis-ci.org/FX-HAO/scheduler-service.svg?branch=develop)](https://travis-ci.org/FX-HAO/scheduler-service)
 [![codecov](https://codecov.io/github/CoCongV/scheduler-service/graph/badge.svg?token=tvuEjqNQss)](https://codecov.io/github/CoCongV/scheduler-service)
-[![codebeat badge](https://codebeat.co/badges/bc50f26a-7be4-4b19-a4bd-b83d505765e3)](https://codebeat.co/projects/github-com-fx-hao-scheduler-service)
-[![](https://images.microbadger.com/badges/image/fuxin/scheduler-service.svg)](https://microbadger.com/images/fuxin/scheduler-service "Get your own image badge on microbadger.com")
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/8533c1d0460d4106a7abca744882d209)](https://app.codacy.com/gh/CoCongV/scheduler-service/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 
 This is a project for providing service based on REST to schedule tasks.
 With this you can trigger an action every day of the month, every day of the week or every single day.
