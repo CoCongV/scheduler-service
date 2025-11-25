@@ -13,10 +13,12 @@ dependencies = [
     "tortoise-orm~=0.20.0",
     "passlib~=1.7",
     "pyjwt~=2.10.1",
-    "dramatiq[rabbitmq, watch]~=2.0.0",
+    "dramatiq[redis, watch]~=2.0.0",
     "httpx~=0.25.0",
     "fastapi (>=0.121.3,<0.122.0)",
     "pydantic[email] (>=2.12.4,<3.0.0)",
+    "apscheduler (>=3.11.1,<4.0.0)",
+    "redis (>=5.0.0,<6.0.0)",
 
 ]
 requires-python = ">=3.14,<4.0"

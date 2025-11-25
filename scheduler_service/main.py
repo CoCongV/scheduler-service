@@ -20,8 +20,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期管理"""
     # 启动时执行
     await setup_dbs(app)
+    
+    # 启动调度器
+    from scheduler_service.broker import scheduler
+    scheduler.start()
+    
     # Dramatiq will be set up by the app fixture in tests or via external config in production
     yield
+    
+    # 关闭调度器
+    scheduler.shutdown()
+    
     # 关闭时执行
     await close_dbs()
 

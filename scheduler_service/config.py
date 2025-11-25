@@ -17,7 +17,7 @@ class Config:
     RESTFUL_JSON = {"cls": CustomJsonEncoder}
     LOG_LEVEL = logging.DEBUG
 
-    DRAMATIQ_URL = "amqp://guest:guest@localhost:25672/%2F"
+    REDIS_URL = "redis://localhost:6379/0"
 
     @classmethod
     def to_dict(cls):
