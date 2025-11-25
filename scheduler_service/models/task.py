@@ -15,6 +15,7 @@ class RequestTask(Model):
     header = fields.JSONField(null=True)  # HTTP请求头字段
     method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法
     body = fields.JSONField(default=dict)
+    message_id = fields.CharField(max_length=64, null=True)  # Dramatiq 消息 ID
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField(
@@ -41,5 +42,6 @@ class RequestTask(Model):
             "callback_token": self.callback_token,
             "header": self.header,
             "method": self.method,
-            "body": self.body
+            "body": self.body,
+            "message_id": self.message_id
         }

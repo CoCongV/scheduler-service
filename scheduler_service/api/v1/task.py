@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from dramatiq_abort import abort
 
 from scheduler_service.api.decorators import login_require
 from scheduler_service.api.schemas import RequestTaskCreate
@@ -32,7 +33,9 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
     )
 
     # 发送ping任务到消息队列
-    ping.send(task.id)
+    message = ping.send(task.id)
+    task.message_id = message.message_id
+    await task.save()
 
     return {
         'task_id': task.id
@@ -53,7 +56,7 @@ async def get_task(task_id: int, current_user: User = Depends(login_require)):
 
 
 async def delete_task(task_id: int, current_user: User = Depends(login_require)):
-    """删除请求任务"""
+    """删除请求任务（同时尝试取消排队中的消息）"""
     # 验证任务是否属于当前用户
     task = await RequestTask.get_or_none(id=task_id, user_id=current_user.id)
     if not task:
@@ -61,6 +64,14 @@ async def delete_task(task_id: int, current_user: User = Depends(login_require))
             status_code=status.HTTP_404_NOT_FOUND,
             detail="请求任务不存在"
         )
+
+    # 尝试取消任务
+    if task.message_id:
+        try:
+            abort(task.message_id)
+        except Exception:
+            # 忽略中止失败（例如任务可能已完成或ID无效），不影响删除操作
+            pass
 
     await task.delete()
     return None

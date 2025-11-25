@@ -512,6 +512,27 @@ redis = ["redis (>=4.0,<7.0)"]
 watch = ["watchdog (>=4.0)", "watchdog_gevent (>=0.2)"]
 
 [[package]]
+name = "dramatiq-abort"
+version = "1.2.1"
+description = "Dramatiq middleware to abort tasks."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "dramatiq_abort-1.2.1-py3-none-any.whl", hash = "sha256:d025e358875b437346cc2f665525735b1a079ce7dcac9c3dc70853fa798efd69"},
+    {file = "dramatiq_abort-1.2.1.tar.gz", hash = "sha256:795ee9a37d884d70e63b758031017cd1f7c33f40db5f4901aaa95fcb659c13c0"},
+]
+
+[package.dependencies]
+dramatiq = "*"
+
+[package.extras]
+all = ["gevent (>=1.1)", "redis (>=2.0,<6.0)"]
+dev = ["black", "build", "flake8", "flake8-bugbear", "flake8-quotes", "gevent (>=1.1)", "isort", "mypy", "pytest", "pytest-cov", "redis (>=2.0,<6.0)", "sphinx", "sphinx-autodoc-typehints", "tox (>=3.14.0)", "twine", "types-redis", "wheel"]
+gevent = ["gevent (>=1.1)"]
+redis = ["redis (>=2.0,<6.0)"]
+
+[[package]]
 name = "email-validator"
 version = "2.3.0"
 description = "A robust email address syntax and deliverability validation library."
@@ -1761,4 +1782,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.14,<4.0"
-content-hash = "9d658692b4c3c25b0e9bd358a58b5aff68d3429226aa3d8ba3a4fdc13503ca63"
+content-hash = "23395d2a51b5583e020ced655bbf032d5c438137cd89b8ce29f0abf9c31504be"

@@ -1,4 +1,5 @@
 import os
+import dramatiq # Import for debugging
 
 import pytest
 from dramatiq import Worker
@@ -26,7 +27,12 @@ async def client(app):
 def stub_broker():
     """使用内存broker进行Dramatiq测试"""
     # 现在 broker.py 会因为 UNIT_TESTS=1 返回 StubBroker
-    from scheduler_service.broker import broker
+    from scheduler_service import broker
+    
+    print(f"\n[DEBUG] conftest.stub_broker fixture called")
+    print(f"[DEBUG] Imported 'broker' from scheduler_service: {broker}")
+    print(f"[DEBUG] dramatiq.get_broker() returns: {dramatiq.get_broker()}")
+    
     broker.flush_all()
     return broker
 
