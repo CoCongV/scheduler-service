@@ -53,38 +53,46 @@ SECRET_KEY = "your-secret-key"
 poetry install
 ```
 
+> Once installed, the `scheduler` command will be available in your environment (e.g., inside `poetry shell`).
+
 ### 4. Run Application
 
 The project includes a convenient CLI tool `scheduler`.
 
 ```bash
-# Initialize database (using Aerich for migrations)
-poetry run aerich init-db
+# Initialize database (automatically sets up Aerich migrations)
+scheduler init-db
 
 # Start the web server
-poetry run scheduler runserver
+scheduler runserver
 
 # Start the task worker (in a separate terminal)
-poetry run scheduler worker
+scheduler worker
 ```
 
 ### 5. Database Migrations
 
-This project uses [Aerich](https://github.com/tortoise/aerich) for database migrations.
+This project uses Aerich for database migrations, integrated into the `scheduler` CLI.
 
 - **Initialize Database (First Run):**
   ```bash
-  poetry run aerich init-db
+  # This is equivalent to scheduler init-db
+  scheduler migrate init-db
   ```
 
 - **Create a Migration (After modifying models):**
   ```bash
-  poetry run aerich migrate --name update_some_model
+  scheduler migrate create --name update_some_model
   ```
 
 - **Apply Migrations:**
   ```bash
-  poetry run aerich upgrade
+  scheduler migrate upgrade
+  ```
+
+- **View History:**
+  ```bash
+  scheduler migrate history
   ```
 
 ## API Documentation
@@ -116,7 +124,7 @@ Once the server is running (defaulting to `http://127.0.0.1:8000`), you can acce
 Run the test suite with coverage:
 
 ```bash
-poetry run scheduler test --coverage
+scheduler test --coverage
 ```
 
 ## Roadmap
