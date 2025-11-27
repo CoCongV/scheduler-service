@@ -174,4 +174,4 @@ Thumbs.db
 id_rsa
 
 # Temporary files
-tmp/
+migrations/
