@@ -18,6 +18,7 @@ class RequestTaskCreate(BaseModel):
     callback_url: Optional[str] = None
     callback_token: Optional[str] = None  # 用于callback_url登录的token
     body: Optional[dict] = None  # HTTP请求体
+    cron: Optional[str] = None # cron 表达式
 
     @field_validator('method')
     @classmethod
@@ -39,5 +40,10 @@ class RequestTaskResponse(BaseModel):
     header: Optional[dict] = None  # HTTP请求头字段
     method: str = 'GET'  # HTTP请求方法
     body: Optional[dict] = None  # HTTP请求体
+    cron: Optional[str] = None # cron 表达式
+    cron_count: int = 0 # cron 任务已经循环的次数
+    job_id: Optional[str] = None # APScheduler Job ID
+    status: str = "PENDING"
+    error_message: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

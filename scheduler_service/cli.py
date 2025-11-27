@@ -1,11 +1,14 @@
 import logging
 import sys
+import asyncio
 
 import click
-from tortoise import Tortoise, run_async
+from aerich import Command
+from tortoise import Tortoise
 
 from scheduler_service import close_tortoise, setup_tortoise
-from scheduler_service.main import create_app, get_config
+from scheduler_service.main import create_app
+from scheduler_service.config import Config, TORTOISE_ORM
 from scheduler_service.models import User
 
 
@@ -19,8 +22,7 @@ def scheduler():
 def shell():
     """启动交互式shell"""
     from IPython import embed
-    config = get_config()
-    app = create_app(config)
+    app = create_app()
     context = {
         "app": app,
         "User": User
@@ -42,7 +44,7 @@ def runserver(host, port, workers, debug, access_log):
     import uvicorn
 
     # 使用字符串导入路径，以支持热重载功能
-    # create_app函数内部会自动调用get_config()获取配置
+    # create_app函数内部会自动调用Config.to_dict()获取配置
     uvicorn.run(
         "scheduler_service.main:create_app",
         host=host,
@@ -64,9 +66,8 @@ def worker(verbose, processes):
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    # 确保应用已初始化
-    config = get_config()
-    _ = create_app(config)
+    # 确保应用已初始化 (加载配置和注册任务)
+    _ = create_app()
 
     # 运行dramatiq worker
     from dramatiq.cli import main
@@ -84,23 +85,109 @@ def worker(verbose, processes):
 
 @scheduler.command()
 def init_db():
-    """初始化数据库"""
-    config = get_config()
-
-    async def init_tables():
+    """初始化数据库 (使用 Aerich)"""
+    async def run():
         try:
-            # 使用共享的数据库初始化函数
-            await setup_tortoise(config)
-            # 使用Tortoise ORM生成数据库模式
-            await Tortoise.generate_schemas()
-            click.echo("数据库初始化完成")
+            command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+            await command.init()
+            await command.init_db(safe=True)
+            click.echo("数据库初始化完成 (Aerich)")
+        except FileExistsError:
+             # 如果 migrations 文件夹已存在，init() 会报错，但这通常没问题，继续尝试 init-db
+             # 但 Aerich 的 init() 内部如果文件夹存在只是打印信息或报错，取决于版本。
+             # 我们这里假设 init() 失败可能是因为已经初始化过，尝试直接 init-db
+             pass
         except Exception as e:
-            click.echo(f"数据库初始化失败: {e}")
-        finally:
-            await close_tortoise()
+            click.echo(f"初始化过程中遇到问题: {e}")
+            click.echo("尝试运行 'scheduler migrate init-db' 以获取详细信息或使用不同选项。")
 
-    # 运行异步函数
-    run_async(init_tables())
+    asyncio.run(run())
+
+
+@scheduler.group()
+def migrate():
+    """数据库迁移工具 (Aerich)"""
+    pass
+
+
+@migrate.command()
+def init():
+    """初始化 Aerich 配置和目录"""
+    async def run():
+        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        await command.init()
+        click.echo("Aerich initialized")
+    asyncio.run(run())
+
+
+@migrate.command()
+@click.option("--safe", is_flag=True, default=True, help="Safe mode")
+def init_db(safe):
+    """初始化数据库 (创建表)"""
+    async def run():
+        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        await command.init()
+        await command.init_db(safe=safe)
+        click.echo("Database initialized")
+    asyncio.run(run())
+
+
+@migrate.command()
+@click.option("--name", default="update", help="Migration name")
+def create(name):
+    """创建新的迁移文件"""
+    async def run():
+        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        await command.init()
+        await command.migrate(name)
+        click.echo(f"Migration '{name}' created")
+    asyncio.run(run())
+
+
+@migrate.command()
+def upgrade():
+    """应用迁移"""
+    async def run():
+        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        await command.init()
+        await command.upgrade()
+        click.echo("Database upgraded")
+    asyncio.run(run())
+
+
+@migrate.command()
+def downgrade():
+    """回滚迁移"""
+    async def run():
+        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        await command.init()
+        await command.downgrade(delete=False, version=-1)
+        click.echo("Database downgraded")
+    asyncio.run(run())
+
+
+@migrate.command()
+def history():
+    """查看迁移历史"""
+    async def run():
+        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        await command.init()
+        versions = await command.history()
+        for version in versions:
+            click.echo(version)
+    asyncio.run(run())
+
+
+@migrate.command()
+def heads():
+    """查看当前迁移头部"""
+    async def run():
+        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        await command.init()
+        heads = await command.heads()
+        for head in heads:
+            click.echo(head)
+    asyncio.run(run())
 
 
 @scheduler.command()

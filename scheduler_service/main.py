@@ -1,6 +1,4 @@
 """FastAPI主应用文件"""
-import os
-import tomllib  # Python 3.11+ 的 tomllib 模块用于读取 TOML
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
@@ -10,7 +8,7 @@ from fastapi.responses import JSONResponse
 from tortoise import Tortoise
 from tortoise.exceptions import DoesNotExist, IntegrityError
 
-from scheduler_service import close_dramatiq, close_tortoise, setup_dramatiq
+from scheduler_service import close_dramatiq, close_tortoise, setup_dramatiq, get_scheduler
 from scheduler_service.api import setup_routes
 from scheduler_service.config import Config
 
@@ -20,39 +18,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """应用生命周期管理"""
     # 启动时执行
     await setup_dbs(app)
+    
+    # 启动调度器
+    scheduler = get_scheduler()
+    scheduler.start()
+    
     # Dramatiq will be set up by the app fixture in tests or via external config in production
     yield
+    
+    # 关闭调度器
+    if scheduler.running:
+        scheduler.shutdown()
+
     # 关闭时执行
     await close_dbs()
 
 
-def get_config():
-    """获取配置：首先尝试从运行目录下读取config.toml文件，若不存在则使用默认配置"""
-    # 获取默认配置
-    default_config = Config.to_dict()
-
-    # 从运行目录获取config.toml文件路径
-    config_path = os.path.join(os.getcwd(), "config.toml")
-
-    # 如果config.toml文件存在，则读取它并更新默认配置
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, "rb") as f:
-                # 使用tomllib读取TOML文件
-                config_data = tomllib.load(f)
-
-                # 更新默认配置
-                default_config.update(config_data)
-        except Exception as e:
-            # 在实际应用中，这里应该使用logger记录错误
-            print(f"读取config.toml时出错: {e}")
-
-    return default_config
-
-
 def create_app(config: Any = None) -> FastAPI:
     """创建FastAPI应用"""
-    # 获取默认配置
+    # 获取默认配置（Config.to_dict() 会自动加载 TOML 配置）
     default_config = Config.to_dict()
 
     # 如果传入了配置，则用传入的配置更新默认配置
@@ -68,16 +52,12 @@ def create_app(config: Any = None) -> FastAPI:
 
         # 更新默认配置
         default_config.update(config_dict)
-    else:
-        # 如果没有传入配置，则自动获取配置并更新默认配置
-        auto_config = get_config()
-        default_config.update(auto_config)
 
     # 使用新的lifespan事件处理器
     app = FastAPI(
         title="调度服务 API",
         description="任务调度服务的RESTful API",
-        version="0.1.0",
+        version="0.3.0",
         lifespan=lifespan  # 设置生命周期管理
     )
 

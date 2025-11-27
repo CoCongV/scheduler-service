@@ -1,7 +1,8 @@
 import dramatiq
 import httpx
+from tortoise.expressions import F
 
-from scheduler_service.constants import RequestStatus
+from scheduler_service.constants import RequestStatus, TaskStatus
 from scheduler_service.models import RequestTask
 from scheduler_service.utils.logger import logger
 
@@ -24,6 +25,19 @@ async def close_session():
         await _session.aclose()
 
 
+async def trigger_cron_task(task_id):
+    """
+    由APScheduler调用的任务触发器。
+    发送任务到Dramatiq并更新循环计数。
+    """
+    # 发送任务到消息队列
+    ping.send(task_id)
+
+    # 更新循环计数
+    # 使用F表达式进行原子更新
+    await RequestTask.filter(id=task_id).update(cron_count=F('cron_count') + 1)
+
+
 @dramatiq.actor
 async def ping(task_id):
     """执行ping任务"""
@@ -35,6 +49,11 @@ async def ping(task_id):
     if not task:
         logger.warning("Task with id %s not found", task_id)
         return
+
+    # 更新状态为运行中，并清除之前的错误信息
+    task.status = TaskStatus.RUNNING
+    task.error_message = None
+    await task.save()
 
     try:
         # 准备基础请求参数
@@ -70,6 +89,10 @@ async def ping(task_id):
             'status': RequestStatus.COMPLETE
         }
 
+        # 更新状态为完成
+        task.status = TaskStatus.COMPLETED
+        await task.save()
+
     except Exception as e:
         # 处理请求异常
         logger.error("Error requesting task %s: %s", task_id, e)
@@ -79,6 +102,10 @@ async def ping(task_id):
             'exception': str(e),
             'status': RequestStatus.FAIL
         }
+        # 更新状态为失败，并记录错误信息
+        task.status = TaskStatus.FAILED
+        task.error_message = str(e)
+        await task.save()
 
     # 发送回调（无论请求成功与否，只要有回调URL和回调数据）
     if task.callback_url and callback_data:

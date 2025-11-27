@@ -1,6 +1,8 @@
 from tortoise import fields
 from tortoise.models import Model
 
+from scheduler_service.constants import TaskStatus
+
 # 定义有效的HTTP方法列表
 VALID_HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
@@ -15,6 +17,12 @@ class RequestTask(Model):
     header = fields.JSONField(null=True)  # HTTP请求头字段
     method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法
     body = fields.JSONField(default=dict)
+    message_id = fields.CharField(max_length=64, null=True)  # Dramatiq 消息 ID
+    cron = fields.CharField(max_length=64, null=True) # cron 表达式
+    cron_count = fields.IntField(default=0) # cron 任务已经循环的次数
+    job_id = fields.CharField(max_length=64, null=True)  # APScheduler Job ID
+    status = fields.CharField(max_length=20, default=TaskStatus.PENDING)
+    error_message = fields.TextField(null=True) # 任务执行失败时的错误信息
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField(
@@ -41,5 +49,11 @@ class RequestTask(Model):
             "callback_token": self.callback_token,
             "header": self.header,
             "method": self.method,
-            "body": self.body
+            "body": self.body,
+            "message_id": self.message_id,
+            "cron": self.cron,
+            "cron_count": self.cron_count,
+            "job_id": self.job_id,
+            "status": self.status,
+            "error_message": self.error_message
         }

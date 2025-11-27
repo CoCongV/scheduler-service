@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from scheduler_service.constants import RequestStatus
+from scheduler_service.constants import RequestStatus, TaskStatus
 from scheduler_service.models import RequestTask
 from tests import const
 
@@ -105,11 +105,55 @@ class TestTaskAPI:
 
         # 验证任务被放入队列
         # 由于没有启动 worker，任务应该留在队列中
-        from scheduler_service.broker import broker
+        from scheduler_service import broker
         assert broker.queues["default"].qsize() == 1
 
         task_id = response_data["task_id"]
         await client.delete(f"{const.TASK_URL}/{task_id}", headers=headers)
+
+    async def test_create_task_delayed(self, client, headers, mocker):
+        """测试创建延迟任务"""
+        # 模拟当前时间为 T
+        current_time = 1000000000.0  # 2001-09-09...
+        start_time = current_time + 60  # 60秒后
+
+        mocker.patch("time.time", return_value=current_time)
+        
+        # Mock ping actor
+        mock_ping = mocker.patch("scheduler_service.api.v1.task.ping")
+        mock_message = mocker.Mock()
+        mock_message.message_id = "msg_123"
+        mock_ping.send_with_options.return_value = mock_message
+        mock_ping.send.return_value = mock_message
+        
+        # Case 1: Future start_time -> Delayed execution
+        task_data = {
+            "name": "delayed_task",
+            "start_time": start_time,
+            "request_url": "http://example.com",
+            "method": "GET"
+        }
+
+        resp = await client.post(const.TASK_URL, headers=headers, json=task_data)
+        assert resp.status_code == 200
+        
+        # 验证 send_with_options 被调用，且 eta 正确
+        expected_eta = int(start_time * 1000)
+        mock_ping.send_with_options.assert_called_once()
+        call_args = mock_ping.send_with_options.call_args
+        assert call_args.kwargs['eta'] == expected_eta
+        mock_ping.send.assert_not_called()
+        
+        # Case 2: Past start_time -> Immediate execution
+        mock_ping.reset_mock()
+        task_data["start_time"] = current_time - 60 # 过去时间
+        task_data["name"] = "immediate_task"
+        
+        resp = await client.post(const.TASK_URL, headers=headers, json=task_data)
+        assert resp.status_code == 200
+        
+        mock_ping.send.assert_called_once()
+        mock_ping.send_with_options.assert_not_called()
 
     async def test_get_tasks(self, client, headers, user):
         """测试获取任务列表"""
@@ -249,6 +293,9 @@ class TestDramatiqActors:
         mock_task.body = None
         mock_task.header = {}
         mock_task.callback_url = "http://callback.com/status"
+        # Mock status and error_message fields as they are not in specs by default in AsyncMock
+        mock_task.status = TaskStatus.PENDING
+        mock_task.error_message = None
 
         with patch(
             'scheduler_service.models.RequestTask.get_or_none',
@@ -279,6 +326,10 @@ class TestDramatiqActors:
                         'status': RequestStatus.COMPLETE
                     }
                 )
+                # 验证状态流转
+                assert mock_task.status == TaskStatus.COMPLETED
+                assert mock_task.error_message is None
+                assert mock_task.save.call_count >= 2 # Running + Completed
 
     async def test_ping_actor_http_error(self, stub_broker, stub_worker): # 恢复fixture
         mock_task = AsyncMock(spec=RequestTask)
@@ -288,6 +339,8 @@ class TestDramatiqActors:
         mock_task.body = None
         mock_task.header = {}
         mock_task.callback_url = "http://callback.com/status"
+        mock_task.status = TaskStatus.PENDING
+        mock_task.error_message = None
 
         with patch(
             'scheduler_service.models.RequestTask.get_or_none',
@@ -312,6 +365,11 @@ class TestDramatiqActors:
                 args, kwargs = mock_session.post.call_args
                 assert kwargs['json']['status'] == RequestStatus.FAIL
                 assert 'Network error' in kwargs['json']['exception']
+                
+                # 验证状态流转
+                assert mock_task.status == TaskStatus.FAILED
+                assert "Network error" in str(mock_task.error_message)
+                assert mock_task.save.call_count >= 2 # Running + Failed
 
     @pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH", "GET"])
     async def test_ping_actor_methods(self, method, stub_broker, stub_worker):

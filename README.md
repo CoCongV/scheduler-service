@@ -12,7 +12,7 @@ You can also select the hour of the day. If you're a developer, this is similar 
 
 - **Web Framework**: FastAPI
 - **ORM**: Tortoise-ORM (PostgreSQL)
-- **Task Queue**: Dramatiq (RabbitMQ)
+- **Task Queue**: Dramatiq (Redis)
 - **Package Manager**: Poetry
 
 ## Getting Started
@@ -25,11 +25,11 @@ You can also select the hour of the day. If you're a developer, this is similar 
 
 ### 1. Start Infrastructure
 
-Start PostgreSQL and RabbitMQ using Docker:
+Start PostgreSQL and Redis using Docker:
 
 ```bash
-# Start RabbitMQ
-docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:4-management
+# Start Redis
+docker run -d --name some-redis -p 6379:6379 redis:7
 
 # Start PostgreSQL
 docker run -d --name some-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:latest
@@ -43,7 +43,7 @@ Create a `config.toml` with the following content:
 
 ```toml
 PG_URL = "postgresql://postgres:postgres@localhost:5432/scheduler"
-DRAMATIQ_URL = "amqp://guest:guest@localhost:5672/%2F"
+REDIS_URL = "redis://localhost:6379/0"
 SECRET_KEY = "your-secret-key"
 ```
 
@@ -53,27 +53,78 @@ SECRET_KEY = "your-secret-key"
 poetry install
 ```
 
+> Once installed, the `scheduler` command will be available in your environment (e.g., inside `poetry shell`).
+
 ### 4. Run Application
 
 The project includes a convenient CLI tool `scheduler`.
 
 ```bash
-# Initialize database (create tables)
-poetry run scheduler init-db
+# Initialize database (automatically sets up Aerich migrations)
+scheduler init-db
 
 # Start the web server
-poetry run scheduler runserver
+scheduler runserver
 
 # Start the task worker (in a separate terminal)
-poetry run scheduler worker
+scheduler worker
 ```
+
+### 5. Database Migrations
+
+This project uses Aerich for database migrations, integrated into the `scheduler` CLI.
+
+- **Initialize Database (First Run):**
+  ```bash
+  # This is equivalent to scheduler init-db
+  scheduler migrate init-db
+  ```
+
+- **Create a Migration (After modifying models):**
+  ```bash
+  scheduler migrate create --name update_some_model
+  ```
+
+- **Apply Migrations:**
+  ```bash
+  scheduler migrate upgrade
+  ```
+
+- **View History:**
+  ```bash
+  scheduler migrate history
+  ```
+
+## API Documentation
+
+Once the server is running (defaulting to `http://127.0.0.1:8000`), you can access the interactive API documentation:
+
+*   **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) (Test APIs directly in your browser)
+*   **Redoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc) (Alternative documentation view)
+
+### Core Endpoints
+
+#### Tasks (`/api/v1/task`)
+
+*   `GET /api/v1/task`: Retrieve all tasks for the current user.
+*   `POST /api/v1/task`: Create a new task (supports one-time and cron-scheduled tasks).
+*   `GET /api/v1/task/{task_id}`: Retrieve details of a specific task.
+*   `DELETE /api/v1/task/{task_id}`: Delete a task (and cancel pending/scheduled jobs).
+
+#### Users (`/api/v1/user`)
+
+*   `POST /api/v1/user`: Register a new user.
+*   `GET /api/v1/user/me`: Get current user profile.
+*   `PUT /api/v1/user/me`: Update current user profile.
+*   `DELETE /api/v1/user/me`: Delete current user account.
+*   `POST /api/v1/user/token`: Login to obtain an authentication token.
 
 ## Testing
 
 Run the test suite with coverage:
 
 ```bash
-poetry run scheduler test --coverage
+scheduler test --coverage
 ```
 
 ## Roadmap
