@@ -58,8 +58,8 @@ poetry install
 The project includes a convenient CLI tool `scheduler`.
 
 ```bash
-# Initialize database (create tables)
-poetry run scheduler init-db
+# Initialize database (using Aerich for migrations)
+poetry run aerich init-db
 
 # Start the web server
 poetry run scheduler runserver
@@ -67,6 +67,25 @@ poetry run scheduler runserver
 # Start the task worker (in a separate terminal)
 poetry run scheduler worker
 ```
+
+### 5. Database Migrations
+
+This project uses [Aerich](https://github.com/tortoise/aerich) for database migrations.
+
+- **Initialize Database (First Run):**
+  ```bash
+  poetry run aerich init-db
+  ```
+
+- **Create a Migration (After modifying models):**
+  ```bash
+  poetry run aerich migrate --name update_some_model
+  ```
+
+- **Apply Migrations:**
+  ```bash
+  poetry run aerich upgrade
+  ```
 
 ## API Documentation
 

@@ -6,7 +6,8 @@ import click
 from tortoise import Tortoise
 
 from scheduler_service import close_tortoise, setup_tortoise
-from scheduler_service.main import create_app, get_config
+from scheduler_service.main import create_app
+from scheduler_service.config import Config
 from scheduler_service.models import User
 
 
@@ -20,8 +21,7 @@ def scheduler():
 def shell():
     """启动交互式shell"""
     from IPython import embed
-    config = get_config()
-    app = create_app(config)
+    app = create_app()
     context = {
         "app": app,
         "User": User
@@ -43,7 +43,7 @@ def runserver(host, port, workers, debug, access_log):
     import uvicorn
 
     # 使用字符串导入路径，以支持热重载功能
-    # create_app函数内部会自动调用get_config()获取配置
+    # create_app函数内部会自动调用Config.to_dict()获取配置
     uvicorn.run(
         "scheduler_service.main:create_app",
         host=host,
@@ -65,9 +65,8 @@ def worker(verbose, processes):
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    # 确保应用已初始化
-    config = get_config()
-    _ = create_app(config)
+    # 确保应用已初始化 (加载配置和注册任务)
+    _ = create_app()
 
     # 运行dramatiq worker
     from dramatiq.cli import main
@@ -86,7 +85,8 @@ def worker(verbose, processes):
 @scheduler.command()
 def init_db():
     """初始化数据库"""
-    config = get_config()
+    # init_db 不使用 create_app，需要手动获取配置
+    config = Config.to_dict()
 
     async def init_tables():
         try:
