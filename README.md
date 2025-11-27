@@ -12,7 +12,7 @@ You can also select the hour of the day. If you're a developer, this is similar 
 
 - **Web Framework**: FastAPI
 - **ORM**: Tortoise-ORM (PostgreSQL)
-- **Task Queue**: Dramatiq (RabbitMQ)
+- **Task Queue**: Dramatiq (Redis)
 - **Package Manager**: Poetry
 
 ## Getting Started
@@ -25,11 +25,11 @@ You can also select the hour of the day. If you're a developer, this is similar 
 
 ### 1. Start Infrastructure
 
-Start PostgreSQL and RabbitMQ using Docker:
+Start PostgreSQL and Redis using Docker:
 
 ```bash
-# Start RabbitMQ
-docker run -d --hostname my-rabbit --name some-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:4-management
+# Start Redis
+docker run -d --name some-redis -p 6379:6379 redis:7
 
 # Start PostgreSQL
 docker run -d --name some-postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:latest
@@ -43,7 +43,7 @@ Create a `config.toml` with the following content:
 
 ```toml
 PG_URL = "postgresql://postgres:postgres@localhost:5432/scheduler"
-DRAMATIQ_URL = "amqp://guest:guest@localhost:5672/%2F"
+REDIS_URL = "redis://localhost:6379/0"
 SECRET_KEY = "your-secret-key"
 ```
 
