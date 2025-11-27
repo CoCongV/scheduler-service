@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from tortoise import Tortoise
 from tortoise.exceptions import DoesNotExist, IntegrityError
 
-from scheduler_service import close_dramatiq, close_tortoise, setup_dramatiq
+from scheduler_service import close_dramatiq, close_tortoise, setup_dramatiq, get_scheduler
 from scheduler_service.api import setup_routes
 from scheduler_service.config import Config
 
@@ -22,15 +22,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await setup_dbs(app)
     
     # 启动调度器
-    from scheduler_service.broker import scheduler
+    scheduler = get_scheduler()
     scheduler.start()
     
     # Dramatiq will be set up by the app fixture in tests or via external config in production
     yield
     
     # 关闭调度器
-    scheduler.shutdown()
-    
+    if scheduler.running:
+        scheduler.shutdown()
+
     # 关闭时执行
     await close_dbs()
 

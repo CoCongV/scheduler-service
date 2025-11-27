@@ -32,7 +32,7 @@ async def trigger_cron_task(task_id):
     """
     # 发送任务到消息队列
     ping.send(task_id)
-    
+
     # 更新循环计数
     # 使用F表达式进行原子更新
     await RequestTask.filter(id=task_id).update(cron_count=F('cron_count') + 1)

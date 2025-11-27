@@ -58,16 +58,16 @@ def generate_broker(config):
         # Note: `config` here can be the Config class or a dict/object with .REDIS_URL or .get("REDIS_URL")
         # We handle both for robustness
         redis_url = getattr(config, "REDIS_URL", None) or (config.get("REDIS_URL") if isinstance(config, dict) else None)
-        
+
         if not redis_url:
             # Fallback or error
             redis_url = "redis://localhost:6379/0"
-        
+
         broker = RedisBroker(url=redis_url)
-        
+
         # Add Middleware
         broker.add_middleware(AsyncIO())
-        
+
         # Abortable Middleware
         try:
             redis_client = redis.Redis.from_url(redis_url)
@@ -129,7 +129,7 @@ def close_dramatiq():
     current_broker = dramatiq.get_broker()
     if current_broker:
         current_broker.close()
-    
+
     # Shut down APScheduler (only if it was started and is running)
     global scheduler
     if scheduler and scheduler.running:
