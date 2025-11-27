@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from typing import List
 
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.jobstores.base import JobLookupError
@@ -13,24 +14,16 @@ from scheduler_service.models import RequestTask, User
 from scheduler_service.service.request import ping, trigger_cron_task
 
 
-async def get_tasks(current_user: User = Depends(login_require)):
-    """获取当前用户的所有请求任务"""
-    tasks = await RequestTask.filter(user_id=current_user.id)
-    return {
-        "tasks": [t.to_dict() for t in tasks]
-    }
-
-
-async def create_task(task_data: RequestTaskCreate, current_user: User = Depends(login_require)):
-    """创建新请求任务"""
+async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> RequestTask:
+    """Internal helper to create a single task"""
     # 创建请求任务
     task = await RequestTask.create(
         name=task_data.name,
-        user_id=current_user.id,
+        user_id=user_id,
         start_time=datetime.fromtimestamp(task_data.start_time),
         request_url=task_data.request_url,
         callback_url=task_data.callback_url,
-        callback_token=task_data.callback_token,  # 从请求中读取callback_token
+        callback_token=task_data.callback_token,
         header=task_data.header,
         method=task_data.method,
         body=task_data.body if task_data.body is not None else {},
@@ -42,12 +35,11 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
         try:
             scheduler = get_scheduler()
             # 验证并创建cron触发器
-            # from_crontab 支持标准的5位 cron 表达式
             trigger = CronTrigger.from_crontab(task.cron)
             job = scheduler.add_job(trigger_cron_task, trigger, args=[task.id])
             task.job_id = job.id
         except ValueError as e:
-            # 如果cron表达式无效，删除已创建的任务并报错
+            # 如果cron表达式无效，删除已创建的任务并抛出异常
             await task.delete()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -55,7 +47,6 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
             )
     else:
         # 如果没有设置cron，则检查 start_time 是否在未来
-        # task_data.start_time 是 timestamp (秒)，Dramatiq eta 需要毫秒
         eta_ms = int(task_data.start_time * 1000)
         current_ms = int(time.time() * 1000)
         
@@ -69,9 +60,36 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
         task.message_id = message.message_id
 
     await task.save()
+    return task
 
+
+async def get_tasks(current_user: User = Depends(login_require)):
+    """获取当前用户的所有请求任务"""
+    tasks = await RequestTask.filter(user_id=current_user.id)
+    return {
+        "tasks": [t.to_dict() for t in tasks]
+    }
+
+
+async def create_task(task_data: RequestTaskCreate, current_user: User = Depends(login_require)):
+    """创建新请求任务"""
+    task = await _create_single_task(task_data, current_user.id)
     return {
         'task_id': task.id
+    }
+
+
+async def bulk_create_task(tasks_data: List[RequestTaskCreate], current_user: User = Depends(login_require)):
+    """批量创建请求任务"""
+    task_ids = []
+    # 简单的循环创建。如果需要更高的性能，可以考虑 Tortoise 的 bulk_create，
+    # 但因为每个任务都需要单独处理调度和消息队列，简单的循环更容易维护且逻辑正确。
+    for task_data in tasks_data:
+        task = await _create_single_task(task_data, current_user.id)
+        task_ids.append(task.id)
+    
+    return {
+        'task_ids': task_ids
     }
 
 
@@ -125,5 +143,6 @@ router = APIRouter()
 
 router.add_api_route("", get_tasks, methods=["GET"])
 router.add_api_route("", create_task, methods=["POST"])
+router.add_api_route("/bulk", bulk_create_task, methods=["POST"])
 router.add_api_route("/{task_id}", get_task, methods=["GET"])
 router.add_api_route("/{task_id}", delete_task, methods=["DELETE"])
