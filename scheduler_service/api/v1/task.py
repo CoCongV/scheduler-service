@@ -67,7 +67,7 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
             message = ping.send(task.id)
             
         task.message_id = message.message_id
-    
+
     await task.save()
 
     return {

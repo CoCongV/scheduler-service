@@ -2,7 +2,7 @@ import dramatiq
 import httpx
 from tortoise.expressions import F
 
-from scheduler_service.constants import RequestStatus
+from scheduler_service.constants import RequestStatus, TaskStatus
 from scheduler_service.models import RequestTask
 from scheduler_service.utils.logger import logger
 
@@ -50,6 +50,10 @@ async def ping(task_id):
         logger.warning("Task with id %s not found", task_id)
         return
 
+    # 更新状态为运行中
+    task.status = TaskStatus.RUNNING
+    await task.save()
+
     try:
         # 准备基础请求参数
         request_kwargs = {
@@ -84,6 +88,10 @@ async def ping(task_id):
             'status': RequestStatus.COMPLETE
         }
 
+        # 更新状态为完成
+        task.status = TaskStatus.COMPLETED
+        await task.save()
+
     except Exception as e:
         # 处理请求异常
         logger.error("Error requesting task %s: %s", task_id, e)
@@ -93,6 +101,9 @@ async def ping(task_id):
             'exception': str(e),
             'status': RequestStatus.FAIL
         }
+        # 更新状态为失败
+        task.status = TaskStatus.FAILED
+        await task.save()
 
     # 发送回调（无论请求成功与否，只要有回调URL和回调数据）
     if task.callback_url and callback_data:

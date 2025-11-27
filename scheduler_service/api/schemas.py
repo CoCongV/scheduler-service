@@ -43,5 +43,6 @@ class RequestTaskResponse(BaseModel):
     cron: Optional[str] = None # cron 表达式
     cron_count: int = 0 # cron 任务已经循环的次数
     job_id: Optional[str] = None # APScheduler Job ID
+    status: str = "PENDING"
 
     model_config = ConfigDict(from_attributes=True)
