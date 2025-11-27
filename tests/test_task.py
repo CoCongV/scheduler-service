@@ -111,6 +111,50 @@ class TestTaskAPI:
         task_id = response_data["task_id"]
         await client.delete(f"{const.TASK_URL}/{task_id}", headers=headers)
 
+    async def test_create_task_delayed(self, client, headers, mocker):
+        """测试创建延迟任务"""
+        # 模拟当前时间为 T
+        current_time = 1000000000.0  # 2001-09-09...
+        start_time = current_time + 60  # 60秒后
+
+        mocker.patch("time.time", return_value=current_time)
+        
+        # Mock ping actor
+        mock_ping = mocker.patch("scheduler_service.api.v1.task.ping")
+        mock_message = mocker.Mock()
+        mock_message.message_id = "msg_123"
+        mock_ping.send_with_options.return_value = mock_message
+        mock_ping.send.return_value = mock_message
+        
+        # Case 1: Future start_time -> Delayed execution
+        task_data = {
+            "name": "delayed_task",
+            "start_time": start_time,
+            "request_url": "http://example.com",
+            "method": "GET"
+        }
+
+        resp = await client.post(const.TASK_URL, headers=headers, json=task_data)
+        assert resp.status_code == 200
+        
+        # 验证 send_with_options 被调用，且 eta 正确
+        expected_eta = int(start_time * 1000)
+        mock_ping.send_with_options.assert_called_once()
+        call_args = mock_ping.send_with_options.call_args
+        assert call_args.kwargs['eta'] == expected_eta
+        mock_ping.send.assert_not_called()
+        
+        # Case 2: Past start_time -> Immediate execution
+        mock_ping.reset_mock()
+        task_data["start_time"] = current_time - 60 # 过去时间
+        task_data["name"] = "immediate_task"
+        
+        resp = await client.post(const.TASK_URL, headers=headers, json=task_data)
+        assert resp.status_code == 200
+        
+        mock_ping.send.assert_called_once()
+        mock_ping.send_with_options.assert_not_called()
+
     async def test_get_tasks(self, client, headers, user):
         """测试获取任务列表"""
         task1 = await RequestTask.create(

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 from apscheduler.triggers.cron import CronTrigger
@@ -53,8 +54,18 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
                 detail=f"Invalid cron expression: {str(e)}"
             )
     else:
-        # 如果没有设置cron，则立即发送ping任务到消息队列（一次性任务）
-        message = ping.send(task.id)
+        # 如果没有设置cron，则检查 start_time 是否在未来
+        # task_data.start_time 是 timestamp (秒)，Dramatiq eta 需要毫秒
+        eta_ms = int(task_data.start_time * 1000)
+        current_ms = int(time.time() * 1000)
+        
+        if eta_ms > current_ms:
+            # 如果是未来时间，使用 eta 延迟发送
+            message = ping.send_with_options(args=[task.id], eta=eta_ms)
+        else:
+            # 否则立即发送
+            message = ping.send(task.id)
+            
         task.message_id = message.message_id
     
     await task.save()
