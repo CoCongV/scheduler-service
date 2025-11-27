@@ -57,7 +57,7 @@ def create_app(config: Any = None) -> FastAPI:
     app = FastAPI(
         title="调度服务 API",
         description="任务调度服务的RESTful API",
-        version="0.1.0",
+        version="0.3.0",
         lifespan=lifespan  # 设置生命周期管理
     )
 
