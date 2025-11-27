@@ -68,6 +68,30 @@ poetry run scheduler runserver
 poetry run scheduler worker
 ```
 
+## API Documentation
+
+Once the server is running (defaulting to `http://127.0.0.1:8000`), you can access the interactive API documentation:
+
+*   **Swagger UI:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) (Test APIs directly in your browser)
+*   **Redoc:** [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc) (Alternative documentation view)
+
+### Core Endpoints
+
+#### Tasks (`/api/v1/task`)
+
+*   `GET /api/v1/task`: Retrieve all tasks for the current user.
+*   `POST /api/v1/task`: Create a new task (supports one-time and cron-scheduled tasks).
+*   `GET /api/v1/task/{task_id}`: Retrieve details of a specific task.
+*   `DELETE /api/v1/task/{task_id}`: Delete a task (and cancel pending/scheduled jobs).
+
+#### Users (`/api/v1/user`)
+
+*   `POST /api/v1/user`: Register a new user.
+*   `GET /api/v1/user/me`: Get current user profile.
+*   `PUT /api/v1/user/me`: Update current user profile.
+*   `DELETE /api/v1/user/me`: Delete current user account.
+*   `POST /api/v1/user/token`: Login to obtain an authentication token.
+
 ## Testing
 
 Run the test suite with coverage:
