@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from scheduler_service.constants import RequestStatus
+from scheduler_service.constants import RequestStatus, TaskStatus
 from scheduler_service.models import RequestTask
 from tests import const
 
@@ -293,6 +293,9 @@ class TestDramatiqActors:
         mock_task.body = None
         mock_task.header = {}
         mock_task.callback_url = "http://callback.com/status"
+        # Mock status and error_message fields as they are not in specs by default in AsyncMock
+        mock_task.status = TaskStatus.PENDING
+        mock_task.error_message = None
 
         with patch(
             'scheduler_service.models.RequestTask.get_or_none',
@@ -323,6 +326,10 @@ class TestDramatiqActors:
                         'status': RequestStatus.COMPLETE
                     }
                 )
+                # 验证状态流转
+                assert mock_task.status == TaskStatus.COMPLETED
+                assert mock_task.error_message is None
+                assert mock_task.save.call_count >= 2 # Running + Completed
 
     async def test_ping_actor_http_error(self, stub_broker, stub_worker): # 恢复fixture
         mock_task = AsyncMock(spec=RequestTask)
@@ -332,6 +339,8 @@ class TestDramatiqActors:
         mock_task.body = None
         mock_task.header = {}
         mock_task.callback_url = "http://callback.com/status"
+        mock_task.status = TaskStatus.PENDING
+        mock_task.error_message = None
 
         with patch(
             'scheduler_service.models.RequestTask.get_or_none',
@@ -356,6 +365,11 @@ class TestDramatiqActors:
                 args, kwargs = mock_session.post.call_args
                 assert kwargs['json']['status'] == RequestStatus.FAIL
                 assert 'Network error' in kwargs['json']['exception']
+                
+                # 验证状态流转
+                assert mock_task.status == TaskStatus.FAILED
+                assert "Network error" in str(mock_task.error_message)
+                assert mock_task.save.call_count >= 2 # Running + Failed
 
     @pytest.mark.parametrize("method", ["POST", "PUT", "DELETE", "PATCH", "GET"])
     async def test_ping_actor_methods(self, method, stub_broker, stub_worker):

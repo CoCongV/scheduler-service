@@ -22,6 +22,7 @@ class RequestTask(Model):
     cron_count = fields.IntField(default=0) # cron 任务已经循环的次数
     job_id = fields.CharField(max_length=64, null=True)  # APScheduler Job ID
     status = fields.CharField(max_length=20, default=TaskStatus.PENDING)
+    error_message = fields.TextField(null=True) # 任务执行失败时的错误信息
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField(
@@ -53,5 +54,6 @@ class RequestTask(Model):
             "cron": self.cron,
             "cron_count": self.cron_count,
             "job_id": self.job_id,
-            "status": self.status
+            "status": self.status,
+            "error_message": self.error_message
         }

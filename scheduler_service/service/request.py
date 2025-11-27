@@ -50,8 +50,9 @@ async def ping(task_id):
         logger.warning("Task with id %s not found", task_id)
         return
 
-    # 更新状态为运行中
+    # 更新状态为运行中，并清除之前的错误信息
     task.status = TaskStatus.RUNNING
+    task.error_message = None
     await task.save()
 
     try:
@@ -101,8 +102,9 @@ async def ping(task_id):
             'exception': str(e),
             'status': RequestStatus.FAIL
         }
-        # 更新状态为失败
+        # 更新状态为失败，并记录错误信息
         task.status = TaskStatus.FAILED
+        task.error_message = str(e)
         await task.save()
 
     # 发送回调（无论请求成功与否，只要有回调URL和回调数据）
