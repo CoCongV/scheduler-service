@@ -12,7 +12,7 @@ class CustomJsonEncoder(json.JSONEncoder):
 
 class Config:
     NAME = "scheduler_service"
-    PG_URL = "postgresql://postgres:postgres@localhost:5432/scheduler"
+    PG_URL = "postgres://postgres:postgres@localhost:5432/scheduler"
     SECRET_KEY = 'your_secret_key'
     RESTFUL_JSON = {"cls": CustomJsonEncoder}
     LOG_LEVEL = logging.DEBUG

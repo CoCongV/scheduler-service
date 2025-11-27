@@ -1,12 +1,15 @@
 from datetime import datetime
 
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.jobstores.base import JobLookupError
 from fastapi import APIRouter, Depends, HTTPException, status
 from dramatiq_abort import abort
 
+from scheduler_service import get_scheduler
 from scheduler_service.api.decorators import login_require
 from scheduler_service.api.schemas import RequestTaskCreate
 from scheduler_service.models import RequestTask, User
-from scheduler_service.service.request import ping
+from scheduler_service.service.request import ping, trigger_cron_task
 
 
 async def get_tasks(current_user: User = Depends(login_require)):
@@ -29,12 +32,31 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
         callback_token=task_data.callback_token,  # 从请求中读取callback_token
         header=task_data.header,
         method=task_data.method,
-        body=task_data.body if task_data.body is not None else {}
+        body=task_data.body if task_data.body is not None else {},
+        cron=task_data.cron
     )
 
-    # 发送ping任务到消息队列
-    message = ping.send(task.id)
-    task.message_id = message.message_id
+    # 如果设置了cron，添加到调度器
+    if task.cron:
+        try:
+            scheduler = get_scheduler()
+            # 验证并创建cron触发器
+            # from_crontab 支持标准的5位 cron 表达式
+            trigger = CronTrigger.from_crontab(task.cron)
+            job = scheduler.add_job(trigger_cron_task, trigger, args=[task.id])
+            task.job_id = job.id
+        except ValueError as e:
+            # 如果cron表达式无效，删除已创建的任务并报错
+            await task.delete()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid cron expression: {str(e)}"
+            )
+    else:
+        # 如果没有设置cron，则立即发送ping任务到消息队列（一次性任务）
+        message = ping.send(task.id)
+        task.message_id = message.message_id
+    
     await task.save()
 
     return {
@@ -56,7 +78,7 @@ async def get_task(task_id: int, current_user: User = Depends(login_require)):
 
 
 async def delete_task(task_id: int, current_user: User = Depends(login_require)):
-    """删除请求任务（同时尝试取消排队中的消息）"""
+    """删除请求任务（同时尝试取消排队中的消息和定时任务）"""
     # 验证任务是否属于当前用户
     task = await RequestTask.get_or_none(id=task_id, user_id=current_user.id)
     if not task:
@@ -65,12 +87,24 @@ async def delete_task(task_id: int, current_user: User = Depends(login_require))
             detail="请求任务不存在"
         )
 
-    # 尝试取消任务
+    # 尝试取消排队中的一次性任务
     if task.message_id:
         try:
             abort(task.message_id)
         except Exception:
-            # 忽略中止失败（例如任务可能已完成或ID无效），不影响删除操作
+            # 忽略中止失败
+            pass
+
+    # 尝试从调度器移除循环任务
+    if task.job_id:
+        try:
+            scheduler = get_scheduler()
+            scheduler.remove_job(task.job_id)
+        except JobLookupError:
+            # 忽略任务未找到错误（可能已经执行完或被手动移除了）
+            pass
+        except Exception:
+             # 忽略其他调度器错误，不影响删除数据库记录
             pass
 
     await task.delete()

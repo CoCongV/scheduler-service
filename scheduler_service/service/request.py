@@ -1,5 +1,6 @@
 import dramatiq
 import httpx
+from tortoise.expressions import F
 
 from scheduler_service.constants import RequestStatus
 from scheduler_service.models import RequestTask
@@ -22,6 +23,19 @@ async def close_session():
     global _session
     if _session and not _session.is_closed:
         await _session.aclose()
+
+
+async def trigger_cron_task(task_id):
+    """
+    由APScheduler调用的任务触发器。
+    发送任务到Dramatiq并更新循环计数。
+    """
+    # 发送任务到消息队列
+    ping.send(task_id)
+    
+    # 更新循环计数
+    # 使用F表达式进行原子更新
+    await RequestTask.filter(id=task_id).update(cron_count=F('cron_count') + 1)
 
 
 @dramatiq.actor

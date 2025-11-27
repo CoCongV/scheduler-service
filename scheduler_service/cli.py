@@ -1,8 +1,9 @@
 import logging
 import sys
+import asyncio
 
 import click
-from tortoise import Tortoise, run_async
+from tortoise import Tortoise
 
 from scheduler_service import close_tortoise, setup_tortoise
 from scheduler_service.main import create_app, get_config
@@ -100,7 +101,7 @@ def init_db():
             await close_tortoise()
 
     # 运行异步函数
-    run_async(init_tables())
+    asyncio.run(init_tables())
 
 
 @scheduler.command()

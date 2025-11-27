@@ -16,6 +16,9 @@ class RequestTask(Model):
     method = fields.CharField(max_length=10, default='GET')  # HTTP请求方法
     body = fields.JSONField(default=dict)
     message_id = fields.CharField(max_length=64, null=True)  # Dramatiq 消息 ID
+    cron = fields.CharField(max_length=64, null=True) # cron 表达式
+    cron_count = fields.IntField(default=0) # cron 任务已经循环的次数
+    job_id = fields.CharField(max_length=64, null=True)  # APScheduler Job ID
 
     # 定义与User的外键关系
     user = fields.ForeignKeyField(
@@ -43,5 +46,8 @@ class RequestTask(Model):
             "header": self.header,
             "method": self.method,
             "body": self.body,
-            "message_id": self.message_id
+            "message_id": self.message_id,
+            "cron": self.cron,
+            "cron_count": self.cron_count,
+            "job_id": self.job_id
         }

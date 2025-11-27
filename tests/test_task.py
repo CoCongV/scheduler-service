@@ -105,7 +105,7 @@ class TestTaskAPI:
 
         # 验证任务被放入队列
         # 由于没有启动 worker，任务应该留在队列中
-        from scheduler_service.broker import broker
+        from scheduler_service import broker
         assert broker.queues["default"].qsize() == 1
 
         task_id = response_data["task_id"]
