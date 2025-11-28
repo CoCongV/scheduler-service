@@ -191,6 +191,35 @@ def heads():
 
 
 @scheduler.command()
+def create_admin():
+    """根据配置文件创建默认管理员用户"""
+    async def run():
+        await setup_tortoise(Config.to_dict())  # Pass the Config object
+        try:
+            username = Config.DEFAULT_ADMIN_NAME
+            email = Config.DEFAULT_ADMIN_EMAIL
+            password = Config.DEFAULT_ADMIN_PASSWORD
+
+            user = await User.get_or_none(name=username)
+            if not user:
+                password_hash = User.hash_password(password)
+                await User.create(
+                    name=username,
+                    password_hash=password_hash,
+                    email=email
+                )
+                click.echo(f"管理员用户 '{username}' 创建成功。")
+            else:
+                click.echo(f"用户 '{username}' 已存在。")
+        except Exception as e:
+            click.echo(f"创建管理员用户时出错: {e}")
+        finally:
+            await close_tortoise()  # Close Tortoise connections
+
+    asyncio.run(run())
+
+
+@scheduler.command()
 @click.option('--path', '-p', help='要测试的路径，默认为tests/')
 @click.option('--coverage', '-c', is_flag=True, help='生成覆盖率报告')
 @click.option('--verbose', '-v', is_flag=True, help='显示详细输出')

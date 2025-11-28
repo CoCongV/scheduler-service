@@ -107,8 +107,6 @@ async def setup_dbs(app: FastAPI):
         db_url=db_url,
         modules={"models": ["scheduler_service.models"]},
     )
-    # 生成数据库架构（仅开发环境建议）
-    await Tortoise.generate_schemas()
 
     # 初始化 Dramatiq
     setup_dramatiq(app.config)
