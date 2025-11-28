@@ -16,11 +16,17 @@ from scheduler_service.service.request import ping, trigger_cron_task
 
 async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> RequestTask:
     """Internal helper to create a single task"""
+    # Determine start_time: use provided or default to now (timestamp in seconds)
+    if task_data.start_time:
+        start_ts = int(task_data.start_time)
+    else:
+        start_ts = int(time.time())
+
     # 创建请求任务
     task = await RequestTask.create(
         name=task_data.name,
         user_id=user_id,
-        start_time=datetime.fromtimestamp(task_data.start_time),
+        start_time=start_ts,
         request_url=task_data.request_url,
         callback_url=task_data.callback_url,
         callback_token=task_data.callback_token,
@@ -47,16 +53,21 @@ async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> Req
             )
     else:
         # 如果没有设置cron，则检查 start_time 是否在未来
-        eta_ms = int(task_data.start_time * 1000)
-        current_ms = int(time.time() * 1000)
-        
-        if eta_ms > current_ms:
-            # 如果是未来时间，使用 eta 延迟发送
-            message = ping.send_with_options(args=[task.id], eta=eta_ms)
+        # 如果 task_data.start_time 为 None，说明是立即执行，eta_ms 设为 0 或当前时间
+        if task_data.start_time:
+            eta_ms = int(task_data.start_time * 1000)
+            current_ms = int(time.time() * 1000)
+
+            if eta_ms > current_ms:
+                # 如果是未来时间，使用 eta 延迟发送
+                message = ping.send_with_options(args=[task.id], eta=eta_ms)
+            else:
+                # 否则立即发送
+                message = ping.send(task.id)
         else:
-            # 否则立即发送
+            # 没有 start_time，立即发送
             message = ping.send(task.id)
-            
+
         task.message_id = message.message_id
 
     await task.save()
@@ -87,7 +98,7 @@ async def bulk_create_task(tasks_data: List[RequestTaskCreate], current_user: Us
     for task_data in tasks_data:
         task = await _create_single_task(task_data, current_user.id)
         task_ids.append(task.id)
-    
+
     return {
         'task_ids': task_ids
     }
@@ -133,7 +144,7 @@ async def delete_task(task_id: int, current_user: User = Depends(login_require))
             # 忽略任务未找到错误（可能已经执行完或被手动移除了）
             pass
         except Exception:
-             # 忽略其他调度器错误，不影响删除数据库记录
+            # 忽略其他调度器错误，不影响删除数据库记录
             pass
 
     await task.delete()

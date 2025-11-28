@@ -9,11 +9,13 @@ import {
   NFormItem,
   NInput,
   NSelect,
-  NInputNumber,
   NDatePicker,
   NText,
   useMessage,
-  NTag
+  NTag,
+  NInputGroup,
+  NRadioGroup,
+  NRadioButton
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
 import { format } from 'date-fns'
@@ -23,7 +25,19 @@ const message = useMessage()
 
 const showModal = ref(false)
 // const isEdit = ref(false) // Backend API currently doesn't support editing
-const currentTask = ref<Partial<Task> & { start_time_ts?: number }>({})
+
+interface TaskForm extends Partial<Task> {
+  start_time_ts?: number
+  request_protocol?: string
+  request_path?: string
+  callback_protocol?: string
+  callback_path?: string
+  header_str?: string
+  body_str?: string
+}
+
+const currentTask = ref<TaskForm>({})
+const taskType = ref<'once' | 'cron'>('once')
 const loading = ref(false)
 
 const tasks = ref<Task[]>([])
@@ -68,7 +82,8 @@ const columns: DataTableColumns<Task> = [
       if (row.cron) {
         timeDisplay = row.cron
       } else if (row.start_time) {
-         timeDisplay = format(new Date(row.start_time), 'yyyy-MM-dd HH:mm:ss')
+         // start_time is in seconds, convert to milliseconds
+         timeDisplay = format(new Date(Number(row.start_time) * 1000), 'yyyy-MM-dd HH:mm:ss')
       }
       return h(
         NText,
@@ -162,7 +177,12 @@ function methodTagType(method: string) {
 
 function handleCreate() {
   // isEdit.value = false
-  currentTask.value = { method: 'GET' } // Default method
+  currentTask.value = { 
+    method: 'GET',
+    request_protocol: 'http://',
+    callback_protocol: 'http://'
+  } 
+  taskType.value = 'once'
   showModal.value = true
 }
 
@@ -190,29 +210,61 @@ async function handleDelete(id: number) {
 
 async function handleSaveTask() {
   // Validate required fields
-  if (!currentTask.value.name || !currentTask.value.request_url) {
+  if (!currentTask.value.name || !currentTask.value.request_path) {
     message.error('请填写完整信息')
     return
   }
   
-  if (!currentTask.value.cron && !currentTask.value.start_time_ts) {
-      message.error('请选择开始时间或填写Cron表达式')
+  // if (!currentTask.value.cron && !currentTask.value.start_time_ts) {
+  //     message.error('请选择开始时间或填写Cron表达式')
+  //     return
+  // }
+
+  // Parse JSON fields
+  let header = undefined
+  if (currentTask.value.header_str) {
+    try {
+      header = JSON.parse(currentTask.value.header_str)
+    } catch (e) {
+      message.error('Header 格式错误，请输入有效的 JSON')
       return
+    }
+  }
+
+  let body = undefined
+  if (currentTask.value.body_str) {
+    try {
+      body = JSON.parse(currentTask.value.body_str)
+    } catch (e) {
+      message.error('Body 格式错误，请输入有效的 JSON')
+      return
+    }
   }
 
   loading.value = true
   try {
       // Create task
-      const startTime = currentTask.value.start_time_ts ? currentTask.value.start_time_ts / 1000 : Date.now() / 1000;
+      const startTime = (taskType.value === 'once' && currentTask.value.start_time_ts) 
+        ? currentTask.value.start_time_ts / 1000 
+        : undefined;
+      
+      const fullRequestUrl = (currentTask.value.request_protocol || 'http://') + currentTask.value.request_path
+      
+      let fullCallbackUrl = undefined
+      if (currentTask.value.callback_path) {
+        fullCallbackUrl = (currentTask.value.callback_protocol || 'http://') + currentTask.value.callback_path
+      }
 
       const params: CreateTaskParams = {
         name: currentTask.value.name!,
         start_time: startTime, // Convert to seconds
-        request_url: currentTask.value.request_url!,
+        request_url: fullRequestUrl,
         method: currentTask.value.method,
-        cron: currentTask.value.cron || undefined,
-        // header: currentTask.value.header, // TODO: Add UI for header/body
-        // body: currentTask.value.body
+        cron: taskType.value === 'cron' ? currentTask.value.cron : undefined,
+        header: header,
+        body: body,
+        callback_url: fullCallbackUrl,
+        callback_token: currentTask.value.callback_token
       }
 
       await createTask(params)
@@ -274,21 +326,67 @@ onMounted(() => {
           />
         </n-form-item>
         <n-form-item label="请求URL">
-          <n-input v-model:value="currentTask.request_url" placeholder="输入请求URL" />
+          <n-input-group>
+            <n-select
+              :style="{ width: '30%' }"
+              v-model:value="currentTask.request_protocol"
+              :options="[
+                { label: 'http://', value: 'http://' },
+                { label: 'https://', value: 'https://' }
+              ]"
+            />
+            <n-input :style="{ width: '70%' }" v-model:value="currentTask.request_path" placeholder="输入请求路径 (例如: example.com/api)" />
+          </n-input-group>
         </n-form-item>
-        <n-form-item label="Cron表达式">
-          <n-input v-model:value="currentTask.cron" placeholder="可选，例如: 0 0 * * *" />
+        <n-form-item label="任务类型">
+          <n-radio-group v-model:value="taskType">
+            <n-radio-button value="once">单次执行</n-radio-button>
+            <n-radio-button value="cron">Cron 周期执行</n-radio-button>
+          </n-radio-group>
         </n-form-item>
-        <n-form-item label="开始时间" v-if="!currentTask.cron">
+
+        <n-form-item label="Cron表达式" v-if="taskType === 'cron'">
+          <n-input v-model:value="currentTask.cron" placeholder="例如: 0 0 * * *" />
+        </n-form-item>
+        <n-form-item label="开始时间" v-if="taskType === 'once'">
           <n-date-picker
             v-model:value="currentTask.start_time_ts"
             type="datetime"
             clearable
-            placeholder="选择任务开始时间"
+            placeholder="留空则立即执行"
             style="width: 100%"
           />
         </n-form-item>
-        <!-- Add more fields as needed, e.g., header, body, callback_url, etc. -->
+        <n-form-item label="Header (JSON)">
+          <n-input
+            v-model:value="currentTask.header_str"
+            type="textarea"
+            placeholder="输入 JSON 格式的 Header"
+          />
+        </n-form-item>
+        <n-form-item label="Body (JSON)">
+          <n-input
+            v-model:value="currentTask.body_str"
+            type="textarea"
+            placeholder="输入 JSON 格式的 Body"
+          />
+        </n-form-item>
+        <n-form-item label="回调 URL">
+          <n-input-group>
+            <n-select
+              :style="{ width: '30%' }"
+              v-model:value="currentTask.callback_protocol"
+              :options="[
+                { label: 'http://', value: 'http://' },
+                { label: 'https://', value: 'https://' }
+              ]"
+            />
+            <n-input :style="{ width: '70%' }" v-model:value="currentTask.callback_path" placeholder="输入回调路径" />
+          </n-input-group>
+        </n-form-item>
+        <n-form-item label="回调 Token">
+          <n-input v-model:value="currentTask.callback_token" placeholder="输入回调 Token" />
+        </n-form-item>
       </n-form>
       <template #action>
         <n-button @click="showModal = false">取消</n-button>

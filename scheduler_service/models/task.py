@@ -11,7 +11,7 @@ VALID_HTTP_METHODS = ['GET', 'POST', 'PUT',
 class RequestTask(Model):
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=32)
-    start_time = fields.DatetimeField(auto_now_add=True)
+    start_time = fields.BigIntField(null=True)  # Unix timestamp in seconds
     request_url = fields.CharField(max_length=128)
     callback_url = fields.CharField(max_length=128, null=True)
     callback_token = fields.CharField(

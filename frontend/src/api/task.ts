@@ -18,7 +18,7 @@ export interface Task {
 
 export interface CreateTaskParams {
   name: string
-  start_time: number // timestamp in seconds
+  start_time?: number // timestamp in seconds
   request_url: string
   method?: string
   cron?: string
