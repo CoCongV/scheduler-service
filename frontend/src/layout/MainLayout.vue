@@ -86,7 +86,7 @@ function handleLogout() {
           <h2>{{ $route.meta.title || 'Scheduler Service' }}</h2>
         </div>
         <n-space>
-          <n-button>用户</n-button>
+          <n-button @click="$router.push('/profile')">个人设置</n-button>
           <n-button type="error" @click="handleLogout">退出登录</n-button>
         </n-space>
       </n-layout-header>

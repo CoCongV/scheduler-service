@@ -33,9 +33,22 @@ export function getUserInfo() {
 }
 
 export function register(data: LoginParams & { email: string, name: string }) {
-    return request({
-        url: '/v1/users',
-        method: 'post',
-        data
-    })
+  return request({
+    url: '/v1/users',
+    method: 'post',
+    data
+  })
+}
+export interface UserUpdateParams {
+  name?: string
+  email?: string
+  password?: string
+}
+
+export function updateUser(data: UserUpdateParams) {
+  return request({
+    url: '/v1/users/me',
+    method: 'put',
+    data
+  })
 }

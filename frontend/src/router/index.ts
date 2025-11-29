@@ -24,6 +24,12 @@ const routes = [
         name: 'Tasks',
         component: () => import('../views/TaskView.vue'),
         meta: { title: '任务管理', requiresAuth: true }
+      },
+      {
+        path: 'profile',
+        name: 'Profile',
+        component: () => import('../views/Profile.vue'),
+        meta: { title: '个人设置' }
       }
     ]
   }
@@ -36,7 +42,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
-  
+
   // 如果去往登录页，且已有token，跳转到首页（可选）
   if (to.path === '/login' && token) {
     next('/')
@@ -45,15 +51,15 @@ router.beforeEach((to, from, next) => {
 
   // 检查是否需要认证
   if (to.matched.some(record => record.meta.requiresAuth !== false)) {
-      // 默认所有路由都需要认证，除了明确标记不需要的，或者登录页
-      // 这里我们的逻辑是：如果不在白名单（如 /login），都需要 token
-      if (to.path !== '/login' && !token) {
-          next('/login')
-      } else {
-          next()
-      }
-  } else {
+    // 默认所有路由都需要认证，除了明确标记不需要的，或者登录页
+    // 这里我们的逻辑是：如果不在白名单（如 /login），都需要 token
+    if (to.path !== '/login' && !token) {
+      next('/login')
+    } else {
       next()
+    }
+  } else {
+    next()
   }
 })
 
