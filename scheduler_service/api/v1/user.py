@@ -65,17 +65,17 @@ async def create_user(user_data: UserCreate):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="用户名已存在"
-            )
+            ) from e
         elif "email" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="邮箱已存在"
-            )
+            ) from e
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="创建用户失败"
-            )
+            ) from e
 
 
 async def get_current_user_info(current_user: User = Depends(login_require)):
@@ -99,7 +99,25 @@ async def update_user(user_data: UserUpdate, current_user: User = Depends(login_
 
     # 执行更新
     if update_data:
-        await User.filter(id=current_user.id).update(**update_data)
+        try:
+            await User.filter(id=current_user.id).update(**update_data)
+        except IntegrityError as e:
+            if "name" in str(e):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="用户名已存在"
+                ) from e
+            elif "email" in str(e):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="邮箱已存在"
+                ) from e
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="更新用户信息失败"
+                ) from e
+
         # 重新获取更新后的用户信息
         updated_user = await User.get(id=current_user.id)
         return updated_user.to_dict()
@@ -128,12 +146,12 @@ async def get_token(token_data: TokenRequest, request: Request):
             user = await User.get(name=token_data.name)
         else:
             user = await User.get(email=token_data.email)
-    except DoesNotExist:
+    except DoesNotExist as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from e
 
     # 验证密码
     if not user.verify_password(token_data.password):

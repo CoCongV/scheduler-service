@@ -62,29 +62,18 @@ async def ping(task_id):
     await task.save()
 
     try:
-        # 准备基础请求参数
-        request_kwargs = {
-            'url': task.request_url,
+        # 准备请求参数
+        url = task.request_url
+        kwargs = {
             'headers': task.header if task.header else {}
         }
 
         # 如果有body，作为请求体
         if task.body:
-            request_kwargs['json'] = task.body
+            kwargs['json'] = task.body
 
-        # 根据method执行相应的HTTP请求（已在保存时转换为大写）
-        match task.method:
-            case 'POST':
-                response = await session.post(**request_kwargs)
-            case 'PUT':
-                response = await session.put(**request_kwargs)
-            case 'DELETE':
-                response = await session.delete(**request_kwargs)
-            case 'PATCH':
-                response = await session.patch(**request_kwargs)
-            case _:
-                # 默认使用GET（包括当method为GET或其他未知方法时）
-                response = await session.get(**request_kwargs)
+        # 执行HTTP请求
+        response = await session.request(task.method, url, **kwargs)
 
         # 读取响应内容
         content = await response.aread()

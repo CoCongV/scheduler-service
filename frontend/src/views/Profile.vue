@@ -92,8 +92,13 @@ function handleValidateClick(e: MouseEvent) {
         message.success('更新成功')
         // Clear password field after successful update
         formValue.value.password = ''
-      } catch (error) {
+      } catch (error: any) {
         console.error(error)
+        if (error.response && error.response.data && error.response.data.detail) {
+          message.error(error.response.data.detail)
+        } else {
+          message.error('更新失败')
+        }
       } finally {
         loading.value = false
       }
