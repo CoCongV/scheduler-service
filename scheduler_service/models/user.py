@@ -6,8 +6,6 @@ from tortoise import fields
 from tortoise.exceptions import DoesNotExist
 from tortoise.models import Model
 
-from scheduler_service.utils.logger import logger
-
 
 class User(Model):
     id = fields.IntField(pk=True)
@@ -44,23 +42,18 @@ class User(Model):
 
     @classmethod
     async def verify_auth_token(cls, token: str, secret_key: str):
-        # Temporary print for debugging
-        print(f"DEBUG: verify_auth_token received secret_key: {secret_key}")
         try:
             data = jwt.decode(token,
                               secret_key,
                               algorithms=['HS256'])
-        except Exception as e:
-            logger.debug(f"Token verification error (jwt.decode): {e}")
+        except Exception:
             return False
         else:
             if data['flag'] != 'auth':
-                logger.debug("Token verification error: Invalid flag")
                 return False
             try:
                 return await cls.get(id=data['id'])
             except DoesNotExist:
-                logger.debug("Token verification error: User does not exist for ID")
                 return False
 
     def to_dict(self) -> dict:
