@@ -1,10 +1,10 @@
 import os
 import urllib.parse
 import asyncio
+from typing import Optional
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
-from dramatiq.brokers.stub import StubBroker
 from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import AsyncIO, Middleware
 from dramatiq.asyncio import get_event_loop_thread
@@ -90,12 +90,12 @@ def generate_broker(config):
     if os.getenv("UNIT_TESTS") == "1":
         # [Test Mode]
         # Use StubBroker for in-memory testing
-        broker = StubBroker()
-        broker.emit_after("process_boot")
+        configured_broker = StubBroker()
+        configured_broker.emit_after("process_boot")
         # Add AsyncIO middleware (needed for async actors)
-        broker.add_middleware(AsyncIO())
+        configured_broker.add_middleware(AsyncIO())
         # Test mode typically doesn't need Abortable unless mocking backend
-        return broker
+        return configured_broker
     else:
         # [Production Mode]
         # Config.REDIS_URL is populated from env vars or config file
@@ -108,21 +108,21 @@ def generate_broker(config):
             # Fallback or error
             redis_url = "redis://localhost:6379/0"
 
-        broker = RedisBroker(url=redis_url)
+        configured_broker = RedisBroker(url=redis_url)
 
         # Add Middleware
-        broker.add_middleware(AsyncIO())
-        broker.add_middleware(TortoiseMiddleware())
+        configured_broker.add_middleware(AsyncIO())
+        configured_broker.add_middleware(TortoiseMiddleware())
 
         # Abortable Middleware
         try:
             redis_client = redis.Redis.from_url(redis_url)
             abort_backend = RedisBackend(client=redis_client)
-            broker.add_middleware(Abortable(backend=abort_backend))
+            configured_broker.add_middleware(Abortable(backend=abort_backend))
         except Exception as e:
             logger.warning("Failed to configure Abortable middleware: %s", e)
 
-        return broker
+        return configured_broker
 
 
 # --- Global Initialization ---
@@ -132,7 +132,7 @@ broker = generate_broker(Config)
 dramatiq.set_broker(broker)
 
 # Global scheduler instance (placeholder, fully configured in setup_dramatiq or via default logic)
-scheduler: AsyncIOScheduler = None
+scheduler: Optional[AsyncIOScheduler] = None
 
 
 def get_scheduler() -> AsyncIOScheduler:
@@ -178,7 +178,6 @@ def close_dramatiq():
     if current_broker:
         current_broker.close()
 
-    # Shut down APScheduler (only if it was started and is running)
     # Shut down APScheduler (only if it was started and is running)
     if scheduler and scheduler.running:
         scheduler.shutdown()
