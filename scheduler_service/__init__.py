@@ -1,5 +1,6 @@
 import os
 import urllib.parse
+import asyncio
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
@@ -11,7 +12,7 @@ from dramatiq_abort import Abortable
 from dramatiq_abort.backends.redis import RedisBackend
 from tortoise import Tortoise
 from tortoise.exceptions import ConfigurationError
-import asyncio
+
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
@@ -65,7 +66,7 @@ class TortoiseMiddleware(Middleware):
             logger.info("Tortoise ORM initialized on AsyncIO loop.")
 
         except Exception as e:
-            logger.error(f"Failed to initialize Tortoise ORM: {e}")
+            logger.error("Failed to initialize Tortoise ORM: %s", e)
 
     def before_worker_shutdown(self, broker, worker):
         try:
@@ -78,7 +79,7 @@ class TortoiseMiddleware(Middleware):
                     future.result(timeout=5)
             logger.info("Tortoise ORM connections closed.")
         except Exception as e:
-            logger.warning(f"Error closing Tortoise ORM connections: {e}")
+            logger.warning("Error closing Tortoise ORM connections: %s", e)
 
 
 def generate_broker(config):
