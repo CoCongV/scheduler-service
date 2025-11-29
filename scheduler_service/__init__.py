@@ -149,7 +149,7 @@ def setup_dramatiq(config):
     Initialize Dramatiq message queue and APScheduler (do not start).
     Start and shutdown are managed by application lifecycle or test fixtures.
     """
-    global scheduler, broker
+    global scheduler, broker  # pylint: disable=global-statement
 
     if os.getenv("UNIT_TESTS") == "1":
         # --- [Test Mode] ---
