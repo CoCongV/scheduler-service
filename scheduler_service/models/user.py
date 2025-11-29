@@ -8,6 +8,7 @@ from tortoise.models import Model
 
 
 class User(Model):
+    """User model"""
     id = fields.IntField(pk=True)
     name = fields.CharField(max_length=32, unique=True)
     password_hash = fields.CharField(max_length=256)

@@ -6,53 +6,54 @@ from scheduler_service.api.decorators import login_require
 from scheduler_service.models import User
 
 
-# Pydantic模型
+# Pydantic models
 def to_camel(string: str) -> str:
-    """将snake_case转换为camelCase"""
+    """Convert snake_case to camelCase"""
     components = string.split('_')
     return components[0] + ''.join(x.title() for x in components[1:])
 
 
 class UserCreate(BaseModel):
-    """用户创建模型"""
+    """User creation model"""
     name: str
     password: str
     email: EmailStr
 
 
 class UserUpdate(BaseModel):
-    """用户更新模型"""
+    """User update model"""
     name: str | None = None
     email: EmailStr | None = None
     password: str | None = None
 
 
 class UserResponse(BaseModel):
-    """用户响应模型"""
+    """User response model"""
     id: int
     name: str
     email: str
 
     class Config:
+        """Pydantic configuration"""
         from_attributes = True
 
 
 class TokenRequest(BaseModel):
-    """Token请求模型"""
+    """Token request model"""
     name: str | None = None
     email: str | None = None
     password: str
 
 
 class TokenResponse(BaseModel):
-    """Token响应模型"""
+    """Token response model"""
     token: str
 
 
 async def create_user(user_data: UserCreate):
-    """创建新用户"""
+    """Create new user"""
     try:
-        # 创建用户
+        # Create user
         password_hash = User.hash_password(user_data.password)
         user = await User.create(
             name=user_data.name,
@@ -64,40 +65,40 @@ async def create_user(user_data: UserCreate):
         if "name" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="用户名已存在"
+                detail="Username already exists"
             ) from e
         elif "email" in str(e):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="邮箱已存在"
+                detail="Email already exists"
             ) from e
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="创建用户失败"
+                detail="Failed to create user"
             ) from e
 
 
 async def get_current_user_info(current_user: User = Depends(login_require)):
-    """获取当前用户信息"""
+    """Get current user info"""
     return current_user.to_dict()
 
 
 async def update_user(user_data: UserUpdate, current_user: User = Depends(login_require)):
-    """更新用户信息"""
+    """Update user info"""
     update_data = {}
 
-    # 处理密码更新
+    # Handle password update
     if user_data.password:
         update_data['password_hash'] = User.hash_password(user_data.password)
 
-    # 处理其他字段更新
+    # Handle other fields update
     if user_data.name:
         update_data['name'] = user_data.name
     if user_data.email:
         update_data['email'] = user_data.email
 
-    # 执行更新
+    # Execute update
     if update_data:
         try:
             await User.filter(id=current_user.id).update(**update_data)
@@ -105,20 +106,20 @@ async def update_user(user_data: UserUpdate, current_user: User = Depends(login_
             if "name" in str(e):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="用户名已存在"
+                    detail="Username already exists"
                 ) from e
             elif "email" in str(e):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="邮箱已存在"
+                    detail="Email already exists"
                 ) from e
             else:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="更新用户信息失败"
+                    detail="Failed to update user info"
                 ) from e
 
-        # 重新获取更新后的用户信息
+        # Re-fetch updated user info
         updated_user = await User.get(id=current_user.id)
         return updated_user.to_dict()
 
@@ -126,22 +127,22 @@ async def update_user(user_data: UserUpdate, current_user: User = Depends(login_
 
 
 async def delete_user(current_user: User = Depends(login_require)):
-    """删除当前用户"""
+    """Delete current user"""
     await current_user.delete()
-    return {"message": "用户已删除"}
+    return {"message": "User deleted"}
 
 
 async def get_token(token_data: TokenRequest, request: Request):
-    """获取认证token"""
-    # 验证请求参数
+    """Get authentication token"""
+    # Validate request parameters
     if not token_data.name and not token_data.email:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="请输入用户名或邮箱"
+            detail="Please enter username or email"
         )
 
     try:
-        # 根据用户名或邮箱查找用户
+        # Find user by username or email
         if token_data.name:
             user = await User.get(name=token_data.name)
         else:
@@ -149,22 +150,22 @@ async def get_token(token_data: TokenRequest, request: Request):
     except DoesNotExist as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
 
-    # 验证密码
+    # Verify password
     if not user.verify_password(token_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 更新登录时间
+    # Update login time
     await user.ping()
 
-    # 生成token
+    # Generate token
     secret_key = request.app.config.get("SECRET_KEY")
     token = user.generate_auth_token(secret_key)
 
@@ -172,7 +173,7 @@ async def get_token(token_data: TokenRequest, request: Request):
 
 router = APIRouter()
 
-# 用户管理
+# User management
 router.add_api_route("", create_user, methods=["POST"])
 router.add_api_route("/me", get_current_user_info, methods=["GET"])
 router.add_api_route("/me", update_user, methods=["PUT"])

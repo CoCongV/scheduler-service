@@ -22,7 +22,7 @@ async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> Req
     else:
         start_ts = int(time.time())
 
-    # 创建请求任务
+    # Create request task
     task = await RequestTask.create(
         name=task_data.name,
         user_id=user_id,
@@ -36,11 +36,11 @@ async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> Req
         cron=task_data.cron
     )
 
-    # 如果设置了cron，添加到调度器
+    # If cron is set, add to scheduler
     if task.cron:
         try:
             scheduler = get_scheduler()
-            # 验证并创建cron触发器
+            # Validate and create cron trigger
             trigger = CronTrigger.from_crontab(task.cron)
             job = scheduler.add_job(
                 trigger_cron_task,
@@ -51,27 +51,27 @@ async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> Req
             )
             task.job_id = job.id
         except ValueError as e:
-            # 如果cron表达式无效，删除已创建的任务并抛出异常
+            # If cron expression is invalid, delete created task and raise exception
             await task.delete()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid cron expression: {str(e)}"
             )
     else:
-        # 如果没有设置cron，则检查 start_time 是否在未来
-        # 如果 task_data.start_time 为 None，说明是立即执行，eta_ms 设为 0 或当前时间
+        # If cron is not set, check if start_time is in the future
+        # If task_data.start_time is None, it means immediate execution, eta_ms set to 0 or current time
         if task_data.start_time:
             eta_ms = int(task_data.start_time * 1000)
             current_ms = int(time.time() * 1000)
 
             if eta_ms > current_ms:
-                # 如果是未来时间，使用 eta 延迟发送
+                # If it is future time, use eta to delay sending
                 message = ping.send_with_options(args=[task.id], eta=eta_ms)
             else:
-                # 否则立即发送
+                # Otherwise send immediately
                 message = ping.send(task.id)
         else:
-            # 没有 start_time，立即发送
+            # No start_time, send immediately
             message = ping.send(task.id)
 
         task.message_id = message.message_id
@@ -81,7 +81,7 @@ async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> Req
 
 
 async def get_tasks(current_user: User = Depends(login_require)):
-    """获取当前用户的所有请求任务"""
+    """Get all request tasks for current user"""
     tasks = await RequestTask.filter(user_id=current_user.id)
     return {
         "tasks": [t.to_dict() for t in tasks]
@@ -89,7 +89,7 @@ async def get_tasks(current_user: User = Depends(login_require)):
 
 
 async def create_task(task_data: RequestTaskCreate, current_user: User = Depends(login_require)):
-    """创建新请求任务"""
+    """Create new request task"""
     task = await _create_single_task(task_data, current_user.id)
     return {
         'task_id': task.id
@@ -97,10 +97,10 @@ async def create_task(task_data: RequestTaskCreate, current_user: User = Depends
 
 
 async def bulk_create_task(tasks_data: List[RequestTaskCreate], current_user: User = Depends(login_require)):
-    """批量创建请求任务"""
+    """Bulk create request tasks"""
     task_ids = []
-    # 简单的循环创建。如果需要更高的性能，可以考虑 Tortoise 的 bulk_create，
-    # 但因为每个任务都需要单独处理调度和消息队列，简单的循环更容易维护且逻辑正确。
+    # Simple loop creation. If higher performance is needed, consider Tortoise's bulk_create,
+    # but since each task needs separate scheduling and message queue handling, simple loop is easier to maintain and logically correct.
     for task_data in tasks_data:
         task = await _create_single_task(task_data, current_user.id)
         task_ids.append(task.id)
@@ -111,48 +111,48 @@ async def bulk_create_task(tasks_data: List[RequestTaskCreate], current_user: Us
 
 
 async def get_task(task_id: int, current_user: User = Depends(login_require)):
-    """获取指定请求任务信息"""
-    # 验证任务是否属于当前用户
+    """Get specified request task info"""
+    # Validate if task belongs to current user
     task = await RequestTask.get_or_none(id=task_id, user_id=current_user.id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="请求任务不存在"
+            detail="Request task not found"
         )
 
     return task.to_dict()
 
 
 async def delete_task(task_id: int, current_user: User = Depends(login_require)):
-    """删除请求任务（同时尝试取消排队中的消息和定时任务）"""
-    # 验证任务是否属于当前用户
+    """Delete request task (also attempt to cancel queued messages and scheduled tasks)"""
+    # Validate if task belongs to current user
     task = await RequestTask.get_or_none(id=task_id, user_id=current_user.id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="请求任务不存在"
+            detail="Request task not found"
         )
 
-    # 尝试取消排队中的一次性任务
+    # Attempt to cancel queued one-time task
     if task.message_id:
         try:
             abort(task.message_id)
         except Exception:
-            # 忽略中止失败
+            # Ignore abort failure
             pass
 
-    # 尝试从调度器移除循环任务
+    # Attempt to remove recurring task from scheduler
     if task.job_id:
         try:
             scheduler = get_scheduler()
             scheduler.remove_job(task.job_id)
         except JobLookupError:
-            # 忽略任务未找到错误（可能已经执行完或被手动移除了）
+            # Ignore task not found error (likely finished or already removed)
             logger.info(
                 "Cron task %s not found in scheduler (likely finished or already removed).", task.job_id)
             pass
         except Exception as e:
-            # 忽略其他调度器错误，不影响删除数据库记录
+            # Ignore other scheduler errors, do not affect database record deletion
             logger.error(
                 "Error removing cron task %s from scheduler: %s", task.job_id, e)
             pass
