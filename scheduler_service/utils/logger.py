@@ -56,12 +56,11 @@ def get_logger(name: str = 'scheduler-service', level: int = None) -> Logger:
         level = Config.LOG_LEVEL
 
     # Create logger
-    logger = get_logger(name)  # Recursive call? No, this is logging.getLogger
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+    logger_instance = logging.getLogger(name)
+    logger_instance.setLevel(level)
 
     # Avoid adding duplicate handlers
-    if not logger.handlers:
+    if not logger_instance.handlers:
         # Create handler, output to console
         stream_handler = StreamHandler(sys.stdout)
         stream_handler.setLevel(level)  # Use correct level value now
@@ -76,9 +75,9 @@ def get_logger(name: str = 'scheduler-service', level: int = None) -> Logger:
         stream_handler.setFormatter(formatter)
 
         # Add handler to logger
-        logger.addHandler(stream_handler)
+        logger_instance.addHandler(stream_handler)
 
-    return logger
+    return logger_instance
 
 
 # Create default logger instance
