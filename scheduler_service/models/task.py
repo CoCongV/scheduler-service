@@ -50,7 +50,9 @@ class RequestTask(Model):
         # Validate if callback_url contains protocol
         if self.callback_url and not self.callback_url.startswith(('http://', 'https://')):
             raise ValueError(
-                f"Invalid callback URL: {self.callback_url}. Must start with 'http://' or 'https://'")
+                f"Invalid callback URL: {self.callback_url}. "
+                "Must start with 'http://' or 'https://'"
+            )
 
         # Convert to uppercase before saving
         self.method = self.method.upper()
