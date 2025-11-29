@@ -137,7 +137,6 @@ scheduler: AsyncIOScheduler = None
 
 def get_scheduler() -> AsyncIOScheduler:
     """Get APScheduler instance, raise error if not initialized"""
-    global scheduler
     if scheduler is None:
         raise RuntimeError(
             "APScheduler has not been initialized. Call setup_dramatiq first.")
@@ -180,7 +179,7 @@ def close_dramatiq():
         current_broker.close()
 
     # Shut down APScheduler (only if it was started and is running)
-    global scheduler
+    # Shut down APScheduler (only if it was started and is running)
     if scheduler and scheduler.running:
         scheduler.shutdown()
 
