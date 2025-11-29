@@ -31,11 +31,17 @@ async def trigger_cron_task(task_id):
     发送任务到Dramatiq并更新循环计数。
     """
     # 发送任务到消息队列
-    ping.send(task_id)
+    try:
+        ping.send(task_id)
+    except Exception as e:
+        logger.error("Failed to send task %s to Dramatiq: %s", task_id, e)
 
     # 更新循环计数
     # 使用F表达式进行原子更新
-    await RequestTask.filter(id=task_id).update(cron_count=F('cron_count') + 1)
+    try:
+        await RequestTask.filter(id=task_id).update(cron_count=F('cron_count') + 1)
+    except Exception as e:
+        logger.error("Failed to update cron count for task %s: %s", task_id, e)
 
 
 @dramatiq.actor
@@ -115,7 +121,8 @@ async def ping(task_id):
                 json=callback_data
             )
         except Exception as e:
-            logger.error("Error sending callback to %s: %s", task.callback_url, e)
+            logger.error("Error sending callback to %s: %s",
+                         task.callback_url, e)
 
 
 # 注册启动和关闭钩子

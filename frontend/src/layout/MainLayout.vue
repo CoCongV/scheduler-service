@@ -48,6 +48,11 @@ function handleUpdateValue(key: string, item: MenuOption) {
     message.error(`导航失败: ${err.message}`);
   });
 }
+function handleLogout() {
+  localStorage.removeItem('token')
+  message.success('已退出登录')
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -82,6 +87,7 @@ function handleUpdateValue(key: string, item: MenuOption) {
         </div>
         <n-space>
           <n-button>用户</n-button>
+          <n-button type="error" @click="handleLogout">退出登录</n-button>
         </n-space>
       </n-layout-header>
       <n-layout-content content-style="padding: 24px;">

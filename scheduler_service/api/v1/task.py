@@ -7,7 +7,7 @@ from apscheduler.jobstores.base import JobLookupError
 from fastapi import APIRouter, Depends, HTTPException, status
 from dramatiq_abort import abort
 
-from scheduler_service import get_scheduler
+from scheduler_service import get_scheduler, logger
 from scheduler_service.api.decorators import login_require
 from scheduler_service.api.schemas import RequestTaskCreate
 from scheduler_service.models import RequestTask, User
@@ -42,7 +42,13 @@ async def _create_single_task(task_data: RequestTaskCreate, user_id: int) -> Req
             scheduler = get_scheduler()
             # 验证并创建cron触发器
             trigger = CronTrigger.from_crontab(task.cron)
-            job = scheduler.add_job(trigger_cron_task, trigger, args=[task.id])
+            job = scheduler.add_job(
+                trigger_cron_task,
+                trigger,
+                args=[task.id],
+                misfire_grace_time=60,
+                coalesce=True
+            )
             task.job_id = job.id
         except ValueError as e:
             # 如果cron表达式无效，删除已创建的任务并抛出异常
@@ -142,9 +148,13 @@ async def delete_task(task_id: int, current_user: User = Depends(login_require))
             scheduler.remove_job(task.job_id)
         except JobLookupError:
             # 忽略任务未找到错误（可能已经执行完或被手动移除了）
+            logger.info(
+                "Cron task %s not found in scheduler (likely finished or already removed).", task.job_id)
             pass
-        except Exception:
+        except Exception as e:
             # 忽略其他调度器错误，不影响删除数据库记录
+            logger.error(
+                "Error removing cron task %s from scheduler: %s", task.job_id, e)
             pass
 
     await task.delete()

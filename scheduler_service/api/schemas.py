@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -49,3 +48,9 @@ class RequestTaskResponse(BaseModel):
     error_message: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DashboardStats(BaseModel):
+    """仪表盘统计数据模型"""
+    total_tasks: int
+    status_counts: dict[str, int]
