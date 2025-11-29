@@ -1,18 +1,18 @@
-"""API模块初始化"""
+"""API module initialization"""
 from fastapi import APIRouter
 
 from scheduler_service.api.v1 import task, user, stats
 
 
 def setup_routes(app):
-    """设置路由"""
-    # 创建API路由器
+    """Setup routes"""
+    # Create API router
     api_router = APIRouter()
 
-    # 注册v1版本路由
+    # Register v1 routes
     api_router.include_router(task.router, prefix="/tasks", tags=["tasks"])
     api_router.include_router(user.router, prefix="/users", tags=["users"])
     api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 
-    # 将API路由器注册到应用
+    # Register API router to app
     app.include_router(api_router, prefix="/api/v1")

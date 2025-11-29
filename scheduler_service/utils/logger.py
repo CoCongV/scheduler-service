@@ -4,37 +4,37 @@ from logging import Formatter, Logger, StreamHandler
 
 from scheduler_service.config import Config
 
-# 定义日志颜色
+# Define log colors
 COLORS = {
-    'DEBUG': '\033[36m',  # 青色
-    'INFO': '\033[32m',   # 绿色
-    'WARNING': '\033[33m',  # 黄色
-    'ERROR': '\033[31m',    # 红色
-    'CRITICAL': '\033[41m\033[37m',  # 红底白字
-    'RESET': '\033[0m'      # 重置颜色
+    'DEBUG': '\033[36m',  # Cyan
+    'INFO': '\033[32m',   # Green
+    'WARNING': '\033[33m',  # Yellow
+    'ERROR': '\033[31m',    # Red
+    'CRITICAL': '\033[41m\033[37m',  # Red background white text
+    'RESET': '\033[0m'      # Reset color
 }
 
 
 class ColoredFormatter(Formatter):
-    """带颜色的日志格式化器"""
+    """Colored log formatter"""
 
     def __init__(self, fmt=None, datefmt=None, style='%'):
         super().__init__(fmt, datefmt, style)
 
     def format(self, record):
-        # 保存原始的消息格式
+        # Save original message format
         original_fmt = self._fmt
 
-        # 根据日志级别添加颜色
+        # Add color based on log level
         levelname = record.levelname
         if levelname in COLORS:
-            # 修改消息格式，添加颜色
+            # Modify message format, add color
             self._fmt = f"{COLORS[levelname]}{original_fmt}{COLORS['RESET']}"
 
-        # 格式化日志记录
+        # Format log record
         result = super().format(record)
 
-        # 恢复原始格式
+        # Restore original format
         self._fmt = original_fmt
 
         return result
@@ -42,43 +42,44 @@ class ColoredFormatter(Formatter):
 
 def get_logger(name: str = 'scheduler-service', level: int = None) -> Logger:
     """
-    获取配置好的logger
+    Get configured logger
 
     Args:
-        name: logger名称，默认'scheduler-service'
-        level: 日志级别，如果为None则从Config中读取
+        name: Logger name, default 'scheduler-service'
+        level: Log level, read from Config if None
 
     Returns:
-        配置好的Logger实例
+        Configured Logger instance
     """
-    # 确定日志级别
+    # Determine log level
     if level is None:
         level = Config.LOG_LEVEL
 
-    # 创建logger
+    # Create logger
+    logger = get_logger(name)  # Recursive call? No, this is logging.getLogger
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    # 避免重复添加handler
+    # Avoid adding duplicate handlers
     if not logger.handlers:
-        # 创建handler，输出到控制台
+        # Create handler, output to console
         stream_handler = StreamHandler(sys.stdout)
-        stream_handler.setLevel(level) # 现在使用正确的level值
+        stream_handler.setLevel(level)  # Use correct level value now
 
-        # 创建带颜色的formatter
+        # Create colored formatter
         formatter = ColoredFormatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
 
-        # 给handler设置formatter
+        # Set formatter for handler
         stream_handler.setFormatter(formatter)
 
-        # 给logger添加handler
+        # Add handler to logger
         logger.addHandler(stream_handler)
 
     return logger
 
 
-# 创建默认的logger实例
+# Create default logger instance
 logger = get_logger()

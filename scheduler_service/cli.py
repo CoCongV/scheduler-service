@@ -14,13 +14,13 @@ from scheduler_service.models import User
 
 @click.group()
 def scheduler():
-    """Scheduler Service 命令行工具"""
+    """Scheduler Service CLI"""
     click.echo("Scheduler Service CLI")
 
 
 @scheduler.command()
 def shell():
-    """启动交互式shell"""
+    """Start interactive shell"""
     from IPython import embed
     app = create_app()
     context = {
@@ -40,42 +40,43 @@ def shell():
 @click.option('--debug/--no-debug', default=True)
 @click.option('--access-log/--no-access-log', default=True)
 def runserver(host, port, workers, debug, access_log):
-    """启动Web服务器（开发环境使用）"""
+    """Start Web server (for development)"""
     import uvicorn
 
-    # 使用字符串导入路径，以支持热重载功能
-    # create_app函数内部会自动调用Config.to_dict()获取配置
+    # Use string import path to support hot reload
+    # create_app function will automatically call Config.to_dict() to get config
     uvicorn.run(
         "scheduler_service.main:create_app",
         host=host,
         port=port,
-        reload=debug,  # 开发模式下启用热重载
+        reload=debug,  # Enable hot reload in development mode
         access_log=access_log,
-        factory=True  # 告知uvicorn这是一个应用工厂函数
+        factory=True  # Tell uvicorn this is an app factory function
     )
 
 
 @scheduler.command()
-@click.option('-v', '--verbose', is_flag=True, help='启用详细输出')
-@click.option('-p', '--processes', default=1, type=int, help='worker进程数量')
+@click.option('-v', '--verbose', is_flag=True, help='Enable verbose output')
+@click.option('-p', '--processes', default=1, type=int, help='Number of worker processes')
 def worker(verbose, processes):
-    """启动dramatiq worker"""
-    # 配置日志
+    """Start dramatiq worker"""
+    # Configure logging
     if verbose:
         logging.basicConfig(level=logging.INFO)
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    # 确保应用已初始化 (加载配置和注册任务)
+    # Ensure app is initialized (load config and register tasks)
     _ = create_app()
 
-    # 运行dramatiq worker
+    # Run dramatiq worker
     from dramatiq.cli import main
 
-    # 保存原始argv，避免修改全局状态
+    # Save original argv to avoid modifying global state
     original_argv = sys.argv.copy()
     try:
-        sys.argv = [sys.argv[0], 'scheduler_service.service', '--processes', str(processes)]
+        sys.argv = [sys.argv[0], 'scheduler_service.service',
+                    '--processes', str(processes)]
         main()
     except KeyboardInterrupt:
         print("Worker stopped")
@@ -85,36 +86,39 @@ def worker(verbose, processes):
 
 @scheduler.command()
 def init_db():
-    """初始化数据库 (使用 Aerich)"""
+    """Initialize database (using Aerich)"""
     async def run():
         try:
-            command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+            command = Command(tortoise_config=TORTOISE_ORM,
+                              location="./migrations")
             await command.init()
             await command.init_db(safe=True)
-            click.echo("数据库初始化完成 (Aerich)")
+            click.echo("Database initialized (Aerich)")
         except FileExistsError:
-             # 如果 migrations 文件夹已存在，init() 会报错，但这通常没问题，继续尝试 init-db
-             # 但 Aerich 的 init() 内部如果文件夹存在只是打印信息或报错，取决于版本。
-             # 我们这里假设 init() 失败可能是因为已经初始化过，尝试直接 init-db
-             pass
+            # If migrations folder exists, init() will error, but this is usually fine, continue to try init-db
+            # However, Aerich's init() internally might just print info or error depending on version if folder exists.
+            # Here we assume init() failure might be because it's already initialized, try init-db directly
+            pass
         except Exception as e:
-            click.echo(f"初始化过程中遇到问题: {e}")
-            click.echo("尝试运行 'scheduler migrate init-db' 以获取详细信息或使用不同选项。")
+            click.echo(f"Error during initialization: {e}")
+            click.echo(
+                "Try running 'scheduler migrate init-db' for details or use different options.")
 
     asyncio.run(run())
 
 
 @scheduler.group()
 def migrate():
-    """数据库迁移工具 (Aerich)"""
+    """Database migration tool (Aerich)"""
     pass
 
 
 @migrate.command()
 def init():
-    """初始化 Aerich 配置和目录"""
+    """Initialize Aerich config and directory"""
     async def run():
-        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        command = Command(tortoise_config=TORTOISE_ORM,
+                          location="./migrations")
         await command.init()
         click.echo("Aerich initialized")
     asyncio.run(run())
@@ -123,9 +127,10 @@ def init():
 @migrate.command()
 @click.option("--safe", is_flag=True, default=True, help="Safe mode")
 def init_db(safe):
-    """初始化数据库 (创建表)"""
+    """Initialize database (create tables)"""
     async def run():
-        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        command = Command(tortoise_config=TORTOISE_ORM,
+                          location="./migrations")
         await command.init()
         await command.init_db(safe=safe)
         click.echo("Database initialized")
@@ -135,9 +140,10 @@ def init_db(safe):
 @migrate.command()
 @click.option("--name", default="update", help="Migration name")
 def create(name):
-    """创建新的迁移文件"""
+    """Create new migration file"""
     async def run():
-        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        command = Command(tortoise_config=TORTOISE_ORM,
+                          location="./migrations")
         await command.init()
         await command.migrate(name)
         click.echo(f"Migration '{name}' created")
@@ -146,9 +152,10 @@ def create(name):
 
 @migrate.command()
 def upgrade():
-    """应用迁移"""
+    """Apply migrations"""
     async def run():
-        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        command = Command(tortoise_config=TORTOISE_ORM,
+                          location="./migrations")
         await command.init()
         await command.upgrade()
         click.echo("Database upgraded")
@@ -157,9 +164,10 @@ def upgrade():
 
 @migrate.command()
 def downgrade():
-    """回滚迁移"""
+    """Revert migrations"""
     async def run():
-        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        command = Command(tortoise_config=TORTOISE_ORM,
+                          location="./migrations")
         await command.init()
         await command.downgrade(delete=False, version=-1)
         click.echo("Database downgraded")
@@ -168,9 +176,10 @@ def downgrade():
 
 @migrate.command()
 def history():
-    """查看迁移历史"""
+    """View migration history"""
     async def run():
-        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        command = Command(tortoise_config=TORTOISE_ORM,
+                          location="./migrations")
         await command.init()
         versions = await command.history()
         for version in versions:
@@ -180,9 +189,10 @@ def history():
 
 @migrate.command()
 def heads():
-    """查看当前迁移头部"""
+    """View current migration heads"""
     async def run():
-        command = Command(tortoise_config=TORTOISE_ORM, location="./migrations")
+        command = Command(tortoise_config=TORTOISE_ORM,
+                          location="./migrations")
         await command.init()
         heads = await command.heads()
         for head in heads:
@@ -192,7 +202,7 @@ def heads():
 
 @scheduler.command()
 def create_admin():
-    """根据配置文件创建默认管理员用户"""
+    """Create default admin user from config"""
     async def run():
         await setup_tortoise(Config.to_dict())  # Pass the Config object
         try:
@@ -208,11 +218,11 @@ def create_admin():
                     password_hash=password_hash,
                     email=email
                 )
-                click.echo(f"管理员用户 '{username}' 创建成功。")
+                click.echo(f"Admin user '{username}' created successfully.")
             else:
-                click.echo(f"用户 '{username}' 已存在。")
+                click.echo(f"User '{username}' already exists.")
         except Exception as e:
-            click.echo(f"创建管理员用户时出错: {e}")
+            click.echo(f"Error creating admin user: {e}")
         finally:
             await close_tortoise()  # Close Tortoise connections
 
@@ -220,30 +230,30 @@ def create_admin():
 
 
 @scheduler.command()
-@click.option('--path', '-p', help='要测试的路径，默认为tests/')
-@click.option('--coverage', '-c', is_flag=True, help='生成覆盖率报告')
-@click.option('--verbose', '-v', is_flag=True, help='显示详细输出')
-@click.option('--parallel', '-n', type=int, help='并行执行的进程数')
+@click.option('--path', '-p', help='Path to test, default is tests/')
+@click.option('--coverage', '-c', is_flag=True, help='Generate coverage report')
+@click.option('--verbose', '-v', is_flag=True, help='Show verbose output')
+@click.option('--parallel', '-n', type=int, help='Number of parallel processes')
 @click.option(
     "--coverage-threshold", "-t",
     type=int,
     default=80,
-    help="覆盖率阈值，默认为80%%"
+    help="Coverage threshold, default is 80%%"
 )
 def test(path, coverage, verbose, parallel, coverage_threshold):
-    """启动覆盖率测试"""
+    """Start coverage test"""
     import subprocess
 
-    # 构建pytest命令
+    # Build pytest command
     cmd = [sys.executable, "-m", "pytest"]
 
-    # 添加测试路径
+    # Add test path
     if path:
         cmd.append(path)
     else:
         cmd.append("tests/")
 
-    # 添加覆盖率选项
+    # Add coverage options
     if coverage:
         cmd.extend([
             "--cov=scheduler_service",
@@ -252,22 +262,22 @@ def test(path, coverage, verbose, parallel, coverage_threshold):
             "--cov-report=xml"
         ])
 
-        # 添加覆盖率阈值
+        # Add coverage threshold
         if coverage_threshold:
             cmd.append(f"--cov-fail-under={coverage_threshold}")
 
-    # 添加详细输出
+    # Add verbose output
     if verbose:
         cmd.append("-v")
 
-    # 添加并行执行
+    # Add parallel execution
     if parallel:
         cmd.append(f"-n={parallel}")
 
     click.echo(f"Running command: {' '.join(cmd)}")
     result = subprocess.run(cmd)
 
-    # 如果生成了HTML覆盖率报告，显示路径
+    # If HTML coverage report is generated, show path
     if coverage and result.returncode == 0:
         click.echo("\nHTML coverage report generated in htmlcov/index.html")
 

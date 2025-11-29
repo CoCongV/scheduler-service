@@ -83,8 +83,8 @@ class TortoiseMiddleware(Middleware):
 
 def generate_broker(config):
     """
-    根据配置生成并返回一个配置好的 Dramatiq Broker 实例。
-    支持测试模式 (UNIT_TESTS=1) 使用 StubBroker。
+    Generate and return a configured Dramatiq Broker instance based on config.
+    Supports test mode (UNIT_TESTS=1) using StubBroker.
     """
     if os.getenv("UNIT_TESTS") == "1":
         # [Test Mode]
@@ -135,7 +135,7 @@ scheduler: AsyncIOScheduler = None
 
 
 def get_scheduler() -> AsyncIOScheduler:
-    """获取APScheduler实例，如果未初始化则抛出错误"""
+    """Get APScheduler instance, raise error if not initialized"""
     global scheduler
     if scheduler is None:
         raise RuntimeError(
@@ -146,22 +146,22 @@ def get_scheduler() -> AsyncIOScheduler:
 # --- Setup Functions ---
 def setup_dramatiq(config):
     """
-    初始化Dramatiq消息队列和APScheduler（不启动）。
-    启动和关闭由应用的生命周期或测试夹具管理。
+    Initialize Dramatiq message queue and APScheduler (do not start).
+    Start and shutdown are managed by application lifecycle or test fixtures.
     """
     global scheduler, broker
 
     if os.getenv("UNIT_TESTS") == "1":
-        # --- [测试模式] ---
+        # --- [Test Mode] ---
         jobstores = {'default': MemoryJobStore()}
         scheduler = AsyncIOScheduler(
             jobstores=jobstores, timezone="Asia/Shanghai")
 
     else:
-        # --- [生产模式] ---
+        # --- [Production Mode] ---
         current_broker = generate_broker(config)
         dramatiq.set_broker(current_broker)
-        broker = current_broker  # 更新模块级变量
+        broker = current_broker  # Update module-level variable
 
         redis_url = config.get("REDIS_URL")
         if redis_url:
@@ -173,7 +173,7 @@ def setup_dramatiq(config):
 
 
 def close_dramatiq():
-    """关闭Dramatiq连接"""
+    """Close Dramatiq connection"""
     current_broker = dramatiq.get_broker()
     if current_broker:
         current_broker.close()
@@ -185,11 +185,12 @@ def close_dramatiq():
 
 
 async def setup_tortoise(config):
-    """初始化Tortoise-ORM"""
+    """Initialize Tortoise-ORM"""
     db_url = config.get('PG_URL') or config.get(
         'POSTGRES_URL') or config.get('DB_URL')
     if not db_url:
-        raise ValueError("数据库URL未配置，请设置PG_URL、POSTGRES_URL或DB_URL环境变量")
+        raise ValueError(
+            "Database URL not configured, please set PG_URL, POSTGRES_URL or DB_URL environment variable")
 
     await Tortoise.init(
         db_url=db_url,
@@ -198,9 +199,9 @@ async def setup_tortoise(config):
 
 
 async def close_tortoise():
-    """关闭Tortoise连接，不依赖Sanic应用"""
+    """Close Tortoise connection, independent of Sanic app"""
     try:
         await Tortoise.close_connections()
     except ConfigurationError:
-        # 如果未初始化，忽略错误
+        # Ignore error if not initialized
         pass
