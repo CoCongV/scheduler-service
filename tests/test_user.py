@@ -154,7 +154,7 @@ class TestUserAPI:
             "email": "dup_name_diff_email@test.com"
         })
         assert resp.status_code == 400
-        assert "用户名已存在" in resp.json().get("detail", "")
+        assert "Username already exists" in resp.json().get("detail", "")
 
         # 尝试创建同邮箱用户 (但用户名不同)
         resp = await client.post(const.USER_URL, json={
@@ -163,7 +163,7 @@ class TestUserAPI:
             "email": "duplicate@test.com"
         })
         assert resp.status_code == 400
-        assert "邮箱已存在" in resp.json().get("detail", "")
+        assert "Email already exists" in resp.json().get("detail", "")
 
     async def test_get_token_with_name(self, client):
         """测试使用用户名获取令牌"""
@@ -237,7 +237,7 @@ class TestUserAPI:
             "password": "password"
         })
         assert resp.status_code == 400
-        assert "请输入用户名或邮箱" in resp.json().get("detail", "")
+        assert "Please enter username or email" in resp.json().get("detail", "")
 
     async def test_get_current_user_info(self, client):
         """测试获取当前用户信息"""
@@ -343,7 +343,7 @@ class TestUserAPI:
         resp = await client.delete(f"{const.USER_URL}/me", headers=headers)
         assert resp.status_code == 200
         response_data = resp.json()
-        assert "用户已删除" in response_data.get("message", "")
+        assert "User deleted" in response_data.get("message", "")
 
         # 验证用户已被删除
         resp = await client.post(const.AUTH_TOKEN_URL, json={
