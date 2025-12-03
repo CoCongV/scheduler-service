@@ -1,11 +1,12 @@
 import secrets
-from datetime import datetime
 
-from passlib.hash import pbkdf2_sha256
+from passlib.context import CryptContext
 from tortoise import fields
 from tortoise.models import Model
 
 from .user import User
+
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 
 
 class ApiKey(Model):
@@ -36,8 +37,8 @@ class ApiKey(Model):
     @staticmethod
     def hash_key(key: str) -> str:
         """Hash the API key"""
-        return pbkdf2_sha256.hash(key)
+        return pwd_context.hash(key)
 
     def verify_key(self, key: str) -> bool:
         """Verify the API key against the hash"""
-        return pbkdf2_sha256.verify(key, self.key_hash)
+        return pwd_context.verify(key, self.key_hash)
