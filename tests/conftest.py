@@ -1,6 +1,5 @@
 import os
 
-
 import pytest
 from dramatiq import Worker
 from httpx import AsyncClient
@@ -9,9 +8,8 @@ from tortoise import Tortoise
 # 必须在导入任何 scheduler_service 模块之前设置此环境变量
 os.environ["UNIT_TESTS"] = "1"
 
-from scheduler_service import close_dramatiq, setup_dramatiq, scheduler  # noqa: E402
-from scheduler_service.main import (close_dbs, create_app,  # noqa: E402
-                                    setup_dbs)
+from scheduler_service import close_dramatiq, scheduler, setup_dramatiq  # noqa: E402
+from scheduler_service.main import close_dbs, create_app, setup_dbs  # noqa: E402
 from scheduler_service.models import User  # noqa: E402
 
 
@@ -59,10 +57,10 @@ async def app():
         os.remove("test.db-wal")
 
     test_config = {
-        "POSTGRES_URL": db_url,
+        "PG_URL": db_url,
         "SECRET_KEY": "test-secret-key",
         # 显式禁用 RabbitMQ 连接，防止 setup_dramatiq 尝试连接
-        "DRAMATIQ_URL": None
+        "DRAMATIQ_URL": None,
     }
 
     app = create_app(test_config)
@@ -103,10 +101,7 @@ async def user(app):  # 依赖app确保DB已初始化
     """创建测试用户"""
     password_hash = User.hash_password("password")
     user = await User.create(
-        name="test",
-        password_hash=password_hash,
-        email="test@test.com",
-        verify=True
+        name="test", password_hash=password_hash, email="test@test.com", verify=True
     )
     return user
 
