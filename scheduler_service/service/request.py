@@ -35,7 +35,7 @@ async def trigger_cron_task(task_id):
 
     # 更新循环计数
     # 使用F表达式进行原子更新
-    await RequestTask.filter(id=task_id).update(cron_count=F('cron_count') + 1)
+    await RequestTask.filter(id=task_id).update(cron_count=F("cron_count") + 1)
 
 
 @dramatiq.actor
@@ -58,23 +58,23 @@ async def ping(task_id):
     try:
         # 准备基础请求参数
         request_kwargs = {
-            'url': task.request_url,
-            'headers': task.header if task.header else {}
+            "url": task.request_url,
+            "headers": task.header if task.header else {},
         }
 
         # 如果有body，作为请求体
         if task.body:
-            request_kwargs['json'] = task.body
+            request_kwargs["json"] = task.body
 
         # 根据method执行相应的HTTP请求（已在保存时转换为大写）
         match task.method:
-            case 'POST':
+            case "POST":
                 response = await session.post(**request_kwargs)
-            case 'PUT':
+            case "PUT":
                 response = await session.put(**request_kwargs)
-            case 'DELETE':
+            case "DELETE":
                 response = await session.delete(**request_kwargs)
-            case 'PATCH':
+            case "PATCH":
                 response = await session.patch(**request_kwargs)
             case _:
                 # 默认使用GET（包括当method为GET或其他未知方法时）
@@ -83,11 +83,15 @@ async def ping(task_id):
         # 读取响应内容
         content = await response.aread()
         callback_data = {
-            'response': content.decode('utf-8'),
-            'code': response.status_code,
-            'exception': None,
-            'status': RequestStatus.COMPLETE
+            "response": content.decode("utf-8"),
+            "code": response.status_code,
+            "exception": None,
+            "status": RequestStatus.COMPLETE,
         }
+
+        # Add callback_id to callback data if it exists
+        if task.callback_id:
+            callback_data["callback_id"] = task.callback_id
 
         # 更新状态为完成
         task.status = TaskStatus.COMPLETED
@@ -97,10 +101,10 @@ async def ping(task_id):
         # 处理请求异常
         logger.error("Error requesting task %s: %s", task_id, e)
         callback_data = {
-            'response': None,
-            'code': None,
-            'exception': str(e),
-            'status': RequestStatus.FAIL
+            "response": None,
+            "code": None,
+            "exception": str(e),
+            "status": RequestStatus.FAIL,
         }
         # 更新状态为失败，并记录错误信息
         task.status = TaskStatus.FAILED
@@ -110,10 +114,11 @@ async def ping(task_id):
     # 发送回调（无论请求成功与否，只要有回调URL和回调数据）
     if task.callback_url and callback_data:
         try:
-            await session.post(
-                task.callback_url,
-                json=callback_data
-            )
+            headers = {}
+            if task.callback_token:
+                headers["Authorization"] = f"Bearer {task.callback_token}"
+
+            await session.post(task.callback_url, json=callback_data, headers=headers)
         except Exception as e:
             logger.error("Error sending callback to %s: %s", task.callback_url, e)
 
