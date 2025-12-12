@@ -15,6 +15,7 @@ RUN npm run build
 FROM python:3.14-alpine AS builder
 
 # Install system build dependencies
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add --no-cache build-base
 
 # Install Poetry
@@ -51,6 +52,7 @@ COPY --from=builder /app/dist/*.whl .
 # 3. Strip debug symbols from .so files (drastically reduces size of C-extensions)
 # 4. Remove cached bytecode (__pycache__)
 # 5. Remove build tools and wheel files
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk add --no-cache --virtual .build-deps build-base \
     && pip install --no-cache-dir *.whl \
     && find /usr/local/lib/python3.14/site-packages -name "*.so" -exec strip --strip-all {} + \
