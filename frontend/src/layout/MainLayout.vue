@@ -43,7 +43,7 @@ function renderIcon(icon: any) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
-function handleUpdateValue(key: string, item: MenuOption) {
+function handleUpdateValue(_key: string, item: MenuOption) {
   router.push({ name: item.name as string }).catch(err => {
     message.error(`导航失败: ${err.message}`);
   });

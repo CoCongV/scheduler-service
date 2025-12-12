@@ -40,7 +40,7 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')
 
   // 如果去往登录页，且已有token，跳转到首页（可选）
