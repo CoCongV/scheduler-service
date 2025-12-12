@@ -1,4 +1,5 @@
 """FastAPI main application file"""
+
 from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator
 
@@ -8,7 +9,12 @@ from fastapi.responses import JSONResponse
 from tortoise import Tortoise
 from tortoise.exceptions import DoesNotExist, IntegrityError
 
-from scheduler_service import close_dramatiq, close_tortoise, setup_dramatiq, get_scheduler
+from scheduler_service import (
+    close_dramatiq,
+    close_tortoise,
+    get_scheduler,
+    setup_dramatiq,
+)
 from scheduler_service.api import setup_routes
 from scheduler_service.config import Config
 
@@ -42,7 +48,7 @@ def create_app(config: Any = None) -> FastAPI:
     # If config is provided, update default config with it
     if config:
         # If config is a class, get its dict form
-        if hasattr(config, 'to_dict'):
+        if hasattr(config, "to_dict"):
             config_dict = config.to_dict()
         elif isinstance(config, dict):
             config_dict = config
@@ -58,7 +64,7 @@ def create_app(config: Any = None) -> FastAPI:
         title="Scheduler Service API",
         description="RESTful API for Task Scheduler Service",
         version="0.3.0",
-        lifespan=lifespan  # Set lifespan management
+        lifespan=lifespan,  # Set lifespan management
     )
 
     # Store config to app instance
@@ -79,8 +85,9 @@ def create_app(config: Any = None) -> FastAPI:
     async def integrity_error_exception_handler(request: Request, exc: IntegrityError):
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": [
-                {"loc": [], "msg": str(exc), "type": "IntegrityError"}]},
+            content={
+                "detail": [{"loc": [], "msg": str(exc), "type": "IntegrityError"}]
+            },
         )
 
     # CORS configuration
@@ -93,6 +100,16 @@ def create_app(config: Any = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Serve static files (Frontend)
+    # Check if 'static' directory exists (it will be created in Docker)
+    import os
+
+    from fastapi.staticfiles import StaticFiles
+
+    static_dir = os.path.join(os.getcwd(), "static")
+    if os.path.exists(static_dir):
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+
     return app
 
 
@@ -100,11 +117,15 @@ async def setup_dbs(app: FastAPI):
     """Initialize all database connections"""
 
     # Get database URL, supports multiple config keys
-    db_url = app.config.get('POSTGRES_URL') or app.config.get(
-        'PG_URL') or app.config.get('DB_URL')
+    db_url = (
+        app.config.get("POSTGRES_URL")
+        or app.config.get("PG_URL")
+        or app.config.get("DB_URL")
+    )
     if not db_url:
         raise ValueError(
-            "PostgreSQL database URL not configured, please set POSTGRES_URL, PG_URL or DB_URL")
+            "PostgreSQL database URL not configured, please set POSTGRES_URL, PG_URL or DB_URL"
+        )
 
     # PostgreSQL - Tortoise ORM (Use official implementation)
     await Tortoise.init(
