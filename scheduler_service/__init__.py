@@ -1,14 +1,18 @@
 import os
 import urllib.parse
+import asyncio
+from typing import Optional
 import dramatiq
 import redis
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
-from dramatiq.middleware import AsyncIO
+from dramatiq.middleware import AsyncIO, Middleware
+from dramatiq.asyncio import get_event_loop_thread
 from dramatiq_abort import Abortable
 from dramatiq_abort.backends.redis import RedisBackend
 from tortoise import Tortoise
 from tortoise.exceptions import ConfigurationError
+
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.jobstores.redis import RedisJobStore
@@ -38,45 +42,87 @@ def _get_redis_job_store(redis_url: str) -> RedisJobStore:
         return RedisJobStore(host='localhost', port=6379)
 
 
+class TortoiseMiddleware(Middleware):
+    """
+    Dramatiq Middleware to initialize Tortoise ORM in worker threads.
+    """
+
+    def after_worker_boot(self, broker, worker):
+        try:
+            event_loop_thread = get_event_loop_thread()
+            if not event_loop_thread:
+                logger.error("AsyncIO event loop thread not found.")
+                return
+
+            loop = event_loop_thread.loop
+            if not loop:
+                logger.error("AsyncIO event loop not initialized.")
+                return
+
+            # Initialize Tortoise on the AsyncIO loop
+            future = asyncio.run_coroutine_threadsafe(
+                setup_tortoise(Config.to_dict()), loop)
+            future.result(timeout=10)
+            logger.info("Tortoise ORM initialized on AsyncIO loop.")
+
+        except Exception as e:
+            logger.error("Failed to initialize Tortoise ORM: %s", e)
+
+    def before_worker_shutdown(self, broker, worker):
+        try:
+            event_loop_thread = get_event_loop_thread()
+            if event_loop_thread and event_loop_thread.loop:
+                loop = event_loop_thread.loop
+                if loop.is_running():
+                    future = asyncio.run_coroutine_threadsafe(
+                        close_tortoise(), loop)
+                    future.result(timeout=5)
+            logger.info("Tortoise ORM connections closed.")
+        except Exception as e:
+            logger.warning("Error closing Tortoise ORM connections: %s", e)
+
+
 def generate_broker(config):
     """
-    根据配置生成并返回一个配置好的 Dramatiq Broker 实例。
-    支持测试模式 (UNIT_TESTS=1) 使用 StubBroker。
+    Generate and return a configured Dramatiq Broker instance based on config.
+    Supports test mode (UNIT_TESTS=1) using StubBroker.
     """
     if os.getenv("UNIT_TESTS") == "1":
         # [Test Mode]
         # Use StubBroker for in-memory testing
-        broker = StubBroker()
-        broker.emit_after("process_boot")
+        configured_broker = StubBroker()
+        configured_broker.emit_after("process_boot")
         # Add AsyncIO middleware (needed for async actors)
-        broker.add_middleware(AsyncIO())
+        configured_broker.add_middleware(AsyncIO())
         # Test mode typically doesn't need Abortable unless mocking backend
-        return broker
+        return configured_broker
     else:
         # [Production Mode]
         # Config.REDIS_URL is populated from env vars or config file
         # Note: `config` here can be the Config class or a dict/object with .REDIS_URL or .get("REDIS_URL")
         # We handle both for robustness
-        redis_url = getattr(config, "REDIS_URL", None) or (config.get("REDIS_URL") if isinstance(config, dict) else None)
+        redis_url = getattr(config, "REDIS_URL", None) or (
+            config.get("REDIS_URL") if isinstance(config, dict) else None)
 
         if not redis_url:
             # Fallback or error
             redis_url = "redis://localhost:6379/0"
 
-        broker = RedisBroker(url=redis_url)
+        configured_broker = RedisBroker(url=redis_url)
 
         # Add Middleware
-        broker.add_middleware(AsyncIO())
+        configured_broker.add_middleware(AsyncIO())
+        configured_broker.add_middleware(TortoiseMiddleware())
 
         # Abortable Middleware
         try:
             redis_client = redis.Redis.from_url(redis_url)
             abort_backend = RedisBackend(client=redis_client)
-            broker.add_middleware(Abortable(backend=abort_backend))
+            configured_broker.add_middleware(Abortable(backend=abort_backend))
         except Exception as e:
             logger.warning("Failed to configure Abortable middleware: %s", e)
 
-        return broker
+        return configured_broker
 
 
 # --- Global Initialization ---
@@ -86,61 +132,64 @@ broker = generate_broker(Config)
 dramatiq.set_broker(broker)
 
 # Global scheduler instance (placeholder, fully configured in setup_dramatiq or via default logic)
-scheduler: AsyncIOScheduler = None
+scheduler: Optional[AsyncIOScheduler] = None
 
 
 def get_scheduler() -> AsyncIOScheduler:
-    """获取APScheduler实例，如果未初始化则抛出错误"""
-    global scheduler
+    """Get APScheduler instance, raise error if not initialized"""
     if scheduler is None:
-        raise RuntimeError("APScheduler has not been initialized. Call setup_dramatiq first.")
+        raise RuntimeError(
+            "APScheduler has not been initialized. Call setup_dramatiq first.")
     return scheduler
 
 
 # --- Setup Functions ---
 def setup_dramatiq(config):
     """
-    初始化Dramatiq消息队列和APScheduler（不启动）。
-    启动和关闭由应用的生命周期或测试夹具管理。
+    Initialize Dramatiq message queue and APScheduler (do not start).
+    Start and shutdown are managed by application lifecycle or test fixtures.
     """
-    global scheduler, broker
+    global scheduler, broker  # pylint: disable=global-statement
 
     if os.getenv("UNIT_TESTS") == "1":
-        # --- [测试模式] ---
+        # --- [Test Mode] ---
         jobstores = {'default': MemoryJobStore()}
-        scheduler = AsyncIOScheduler(jobstores=jobstores, timezone="Asia/Shanghai")
+        scheduler = AsyncIOScheduler(
+            jobstores=jobstores, timezone="Asia/Shanghai")
 
     else:
-        # --- [生产模式] ---
+        # --- [Production Mode] ---
         current_broker = generate_broker(config)
         dramatiq.set_broker(current_broker)
-        broker = current_broker # 更新模块级变量
+        broker = current_broker  # Update module-level variable
 
         redis_url = config.get("REDIS_URL")
         if redis_url:
             jobstores = {'default': _get_redis_job_store(redis_url)}
-            scheduler = AsyncIOScheduler(jobstores=jobstores, timezone="Asia/Shanghai")
+            scheduler = AsyncIOScheduler(
+                jobstores=jobstores, timezone="Asia/Shanghai")
         else:
             scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
 
 
 def close_dramatiq():
-    """关闭Dramatiq连接"""
+    """Close Dramatiq connection"""
     current_broker = dramatiq.get_broker()
     if current_broker:
         current_broker.close()
 
     # Shut down APScheduler (only if it was started and is running)
-    global scheduler
     if scheduler and scheduler.running:
         scheduler.shutdown()
 
 
 async def setup_tortoise(config):
-    """初始化Tortoise-ORM"""
-    db_url = config.get('PG_URL') or config.get('POSTGRES_URL') or config.get('DB_URL')
+    """Initialize Tortoise-ORM"""
+    db_url = config.get('PG_URL') or config.get(
+        'POSTGRES_URL') or config.get('DB_URL')
     if not db_url:
-        raise ValueError("数据库URL未配置，请设置PG_URL、POSTGRES_URL或DB_URL环境变量")
+        raise ValueError(
+            "Database URL not configured, please set PG_URL, POSTGRES_URL or DB_URL environment variable")
 
     await Tortoise.init(
         db_url=db_url,
@@ -149,9 +198,9 @@ async def setup_tortoise(config):
 
 
 async def close_tortoise():
-    """关闭Tortoise连接，不依赖Sanic应用"""
+    """Close Tortoise connection, independent of Sanic app"""
     try:
         await Tortoise.close_connections()
     except ConfigurationError:
-        # 如果未初始化，忽略错误
+        # Ignore error if not initialized
         pass

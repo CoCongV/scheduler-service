@@ -6,12 +6,12 @@ from scheduler_service.constants import RequestStatus, TaskStatus
 from scheduler_service.models import RequestTask
 from scheduler_service.utils.logger import logger
 
-# 定义全局session
+# Define global session
 _session = None
 
 
 def get_session():
-    """获取httpx会话"""
+    """Get httpx session"""
     global _session
     if _session is None or _session.is_closed:
         _session = httpx.AsyncClient(timeout=60.0)
@@ -19,7 +19,7 @@ def get_session():
 
 
 async def close_session():
-    """关闭httpx会话"""
+    """Close httpx session"""
     global _session
     if _session and not _session.is_closed:
         await _session.aclose()
@@ -27,60 +27,53 @@ async def close_session():
 
 async def trigger_cron_task(task_id):
     """
-    由APScheduler调用的任务触发器。
-    发送任务到Dramatiq并更新循环计数。
+    Task trigger called by APScheduler.
+    Send task to Dramatiq and update loop count.
     """
-    # 发送任务到消息队列
-    ping.send(task_id)
+    # Send task to message queue
+    try:
+        ping.send(task_id)
+    except Exception as e:
+        logger.error("Failed to send task %s to Dramatiq: %s", task_id, e)
 
-    # 更新循环计数
-    # 使用F表达式进行原子更新
-    await RequestTask.filter(id=task_id).update(cron_count=F("cron_count") + 1)
+    # Update loop count
+    # Use F expression for atomic update
+    try:
+        await RequestTask.filter(id=task_id).update(cron_count=F("cron_count") + 1)
+    except Exception as e:
+        logger.error("Failed to update cron count for task %s: %s", task_id, e)
 
 
 @dramatiq.actor
 async def ping(task_id):
-    """执行ping任务"""
+    """Execute ping task"""
     session = get_session()
     callback_data = None
 
-    # 从数据库获取任务信息
+    # Get task info from database
     task = await RequestTask.get_or_none(id=task_id)
     if not task:
         logger.warning("Task with id %s not found", task_id)
         return
 
-    # 更新状态为运行中，并清除之前的错误信息
+    # Update status to running, and clear previous error message
     task.status = TaskStatus.RUNNING
     task.error_message = None
     await task.save()
 
     try:
-        # 准备基础请求参数
-        request_kwargs = {
-            "url": task.request_url,
-            "headers": task.header if task.header else {},
-        }
+        # Prepare request parameters
+        url = task.request_url
+        kwargs = {"headers": task.header if task.header else {}}
 
-        # 如果有body，作为请求体
+        # If body exists, use it as request body
         if task.body:
-            request_kwargs["json"] = task.body
+            kwargs["json"] = task.body
 
-        # 根据method执行相应的HTTP请求（已在保存时转换为大写）
-        match task.method:
-            case "POST":
-                response = await session.post(**request_kwargs)
-            case "PUT":
-                response = await session.put(**request_kwargs)
-            case "DELETE":
-                response = await session.delete(**request_kwargs)
-            case "PATCH":
-                response = await session.patch(**request_kwargs)
-            case _:
-                # 默认使用GET（包括当method为GET或其他未知方法时）
-                response = await session.get(**request_kwargs)
+        # Execute HTTP request
+        response = await session.request(task.method, url, **kwargs)
 
-        # 读取响应内容
+        # Read response content
         content = await response.aread()
         callback_data = {
             "response": content.decode("utf-8"),
@@ -93,12 +86,12 @@ async def ping(task_id):
         if task.callback_id:
             callback_data["callback_id"] = task.callback_id
 
-        # 更新状态为完成
+        # Update status to completed
         task.status = TaskStatus.COMPLETED
         await task.save()
 
     except Exception as e:
-        # 处理请求异常
+        # Handle request exception
         logger.error("Error requesting task %s: %s", task_id, e)
         callback_data = {
             "response": None,
@@ -106,12 +99,12 @@ async def ping(task_id):
             "exception": str(e),
             "status": RequestStatus.FAIL,
         }
-        # 更新状态为失败，并记录错误信息
+        # Update status to failed, and record error message
         task.status = TaskStatus.FAILED
         task.error_message = str(e)
         await task.save()
 
-    # 发送回调（无论请求成功与否，只要有回调URL和回调数据）
+    # Send callback (regardless of success or failure, as long as there is a callback URL and callback data)
     if task.callback_url and callback_data:
         try:
             headers = {}
@@ -123,15 +116,15 @@ async def ping(task_id):
             logger.error("Error sending callback to %s: %s", task.callback_url, e)
 
 
-# 注册启动和关闭钩子
+# Register startup and shutdown hooks
 @dramatiq.actor
 async def startup_worker():
-    """worker启动时执行"""
+    """Execute when worker starts"""
     global _session
     _session = httpx.AsyncClient(timeout=60.0)
 
 
 @dramatiq.actor
 async def shutdown_worker():
-    """worker关闭时执行"""
+    """Execute when worker shuts down"""
     await close_session()

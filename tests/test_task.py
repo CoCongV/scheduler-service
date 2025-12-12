@@ -18,7 +18,7 @@ class TestTaskModel:
         """测试创建任务"""
         task = await RequestTask.create(
             name="test_task",
-            start_time=datetime.now(),
+            start_time=int(datetime.now().timestamp()),
             user_id=user.id,
             request_url="http://example.com",
             callback_url="http://example.com/callback",
@@ -36,7 +36,7 @@ class TestTaskModel:
         for method in ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]:
             task = await RequestTask.create(
                 name=f"test_{method.lower()}",
-                start_time=datetime.now(),
+                start_time=int(datetime.now().timestamp()),
                 user_id=user.id,
                 request_url="http://example.com",
                 callback_url="http://example.com/callback",
@@ -48,7 +48,7 @@ class TestTaskModel:
         with pytest.raises(ValueError, match="Invalid HTTP method"):
             await RequestTask.create(
                 name="invalid_method",
-                start_time=datetime.now(),
+                start_time=int(datetime.now().timestamp()),
                 user_id=user.id,
                 request_url="http://example.com",
                 method="INVALID",
@@ -58,7 +58,7 @@ class TestTaskModel:
         """测试任务转字典方法"""
         task = await RequestTask.create(
             name="dict_test",
-            start_time=datetime.now(),
+            start_time=int(datetime.now().timestamp()),
             user_id=user.id,
             request_url="http://example.com",
             callback_url="http://example.com/callback",
@@ -207,13 +207,13 @@ class TestTaskAPI:
         """测试获取任务列表"""
         task1 = await RequestTask.create(
             name="task1",
-            start_time=datetime.now(),
+            start_time=int(datetime.now().timestamp()),
             user_id=user.id,
             request_url="http://example.com/1",
         )
         task2 = await RequestTask.create(
             name="task2",
-            start_time=datetime.now(),
+            start_time=int(datetime.now().timestamp()),
             user_id=user.id,
             request_url="http://example.com/2",
         )
@@ -231,7 +231,7 @@ class TestTaskAPI:
         """测试获取单个任务"""
         task = await RequestTask.create(
             name="single_task",
-            start_time=datetime.now(),
+            start_time=int(datetime.now().timestamp()),
             user_id=user.id,
             request_url="http://example.com/single",
             method="POST",
@@ -256,7 +256,7 @@ class TestTaskAPI:
         """测试删除任务"""
         task = await RequestTask.create(
             name="delete_me",
-            start_time=datetime.now(),
+            start_time=int(datetime.now().timestamp()),
             user_id=user.id,
             request_url="http://example.com/delete",
         )
@@ -370,7 +370,7 @@ class TestDramatiqActors:
             mock_response.aread.return_value = b'{"status": "success"}'
 
             mock_session = AsyncMock()
-            mock_session.get.return_value = mock_response
+            mock_session.request.return_value = mock_response
             mock_session.post.return_value = AsyncMock()
 
             with patch(
@@ -384,8 +384,8 @@ class TestDramatiqActors:
                 # 等待任务完成
                 stub_broker.join(queue_name=ping.queue_name)
 
-                mock_session.get.assert_called_once_with(
-                    url=mock_task.request_url, headers={}
+                mock_session.request.assert_called_once_with(
+                    mock_task.method, mock_task.request_url, headers={}
                 )
 
                 # Check if callback_id is included in the callback
@@ -414,7 +414,8 @@ class TestDramatiqActors:
                 assert mock_task.error_message is None
                 assert mock_task.save.call_count >= 2  # Running + Completed
 
-    async def test_ping_actor_http_error(self, stub_broker, stub_worker):  # 恢复fixture
+    # 恢复fixture
+    async def test_ping_actor_http_error(self, stub_broker, stub_worker):
         mock_task = AsyncMock(spec=RequestTask)
         mock_task.id = 2
         mock_task.request_url = "http://nonexistent.com/api"
@@ -430,7 +431,7 @@ class TestDramatiqActors:
             AsyncMock(return_value=mock_task),
         ):
             mock_session = AsyncMock()
-            mock_session.get.side_effect = httpx.RequestError(
+            mock_session.request.side_effect = httpx.RequestError(
                 "Network error", request=httpx.Request("GET", mock_task.request_url)
             )
             mock_session.post.return_value = AsyncMock()
@@ -446,8 +447,8 @@ class TestDramatiqActors:
                 # 等待任务完成
                 stub_broker.join(queue_name=ping.queue_name)
 
-                mock_session.get.assert_called_once_with(
-                    url=mock_task.request_url, headers={}
+                mock_session.request.assert_called_once_with(
+                    mock_task.method, mock_task.request_url, headers={}
                 )
                 mock_session.post.assert_called_once()
                 args, kwargs = mock_session.post.call_args
@@ -485,8 +486,8 @@ class TestDramatiqActors:
             mock_session.post.return_value = AsyncMock()
 
             # 设置特定方法的返回值（如果是POST，这会覆盖上面的设置）
-            mock_method = getattr(mock_session, method.lower())
-            mock_method.return_value = mock_response
+            # 设置request的返回值
+            mock_session.request.return_value = mock_response
 
             with patch(
                 "scheduler_service.service.request.get_session",
@@ -498,18 +499,15 @@ class TestDramatiqActors:
 
                 stub_broker.join(queue_name=ping.queue_name)
 
-                expected_kwargs = {
-                    "url": mock_task.request_url,
-                    "headers": mock_task.header,
-                }
+                expected_kwargs = {"headers": mock_task.header}
                 if mock_task.body:
                     expected_kwargs["json"] = mock_task.body
 
                 # 对于POST方法，session.post会被调用两次（一次请求，一次回调）
-                if method == "POST":
-                    mock_method.assert_any_call(**expected_kwargs)
-                else:
-                    mock_method.assert_called_once_with(**expected_kwargs)
+                # 验证request被调用
+                mock_session.request.assert_called_once_with(
+                    mock_task.method, mock_task.request_url, **expected_kwargs
+                )
 
                 # 验证回调
                 # 注意：如果method是POST，mock_session.post已经被上面的逻辑验证过一部分了
@@ -523,3 +521,93 @@ class TestDramatiqActors:
                         "status": RequestStatus.COMPLETE,
                     },
                 )
+
+    async def test_trigger_cron_task(self, mocker):
+        """Test trigger_cron_task function"""
+        mock_ping = mocker.patch("scheduler_service.service.request.ping")
+        mock_filter = mocker.patch("scheduler_service.models.RequestTask.filter")
+        mock_update = mocker.AsyncMock()
+        mock_filter.return_value.update = mock_update
+
+        from scheduler_service.service.request import trigger_cron_task
+
+        # Test successful trigger
+        await trigger_cron_task(1)
+        mock_ping.send.assert_called_once_with(1)
+        mock_update.assert_called_once()
+
+        # Test exception in ping.send
+        mock_ping.send.side_effect = Exception("Dramatiq error")
+        # Should not raise exception, just log error
+        await trigger_cron_task(1)
+
+        # Test exception in update
+        mock_ping.send.side_effect = None
+        mock_update.side_effect = Exception("DB error")
+        # Should not raise exception, just log error
+        await trigger_cron_task(1)
+
+    async def test_ping_actor_task_not_found(self, mocker):
+        """Test ping actor when task is not found"""
+        # Use new_callable=AsyncMock so the mock is awaitable
+        mock_get = mocker.patch(
+            "scheduler_service.models.RequestTask.get_or_none",
+            new_callable=mocker.AsyncMock,
+            return_value=None,
+        )
+
+        # Mock get_event_loop_thread to return an object that simply returns the coroutine
+        mock_thread = mocker.Mock()
+        mock_thread.run_coroutine.side_effect = lambda coro: coro
+        mocker.patch("dramatiq.asyncio.get_event_loop_thread", return_value=mock_thread)
+
+        from scheduler_service.service.request import ping
+
+        # Should return early without error
+        await ping.fn(999)
+        mock_get.assert_called_once_with(id=999)
+
+    async def test_ping_actor_callback_exception(self, mocker):
+        """Test exception during callback"""
+        mock_task = mocker.AsyncMock(spec=RequestTask)
+        mock_task.id = 1
+        mock_task.request_url = "http://example.com"
+        mock_task.method = "GET"
+        mock_task.callback_url = "http://callback.com"
+        mock_task.body = None
+        mock_task.header = {}
+        # Mock status and error_message fields
+        mock_task.status = TaskStatus.PENDING
+        mock_task.error_message = None
+
+        # Use new_callable=AsyncMock so the mock is awaitable
+        mocker.patch(
+            "scheduler_service.models.RequestTask.get_or_none",
+            new_callable=mocker.AsyncMock,
+            return_value=mock_task,
+        )
+
+        # Mock get_event_loop_thread to return an object that simply returns the coroutine
+        mock_thread = mocker.Mock()
+        mock_thread.run_coroutine.side_effect = lambda coro: coro
+        mocker.patch("dramatiq.asyncio.get_event_loop_thread", return_value=mock_thread)
+
+        mock_session = mocker.AsyncMock()
+        mock_response = mocker.AsyncMock()
+        mock_response.status_code = 200
+        mock_response.aread.return_value = b"ok"
+        mock_session.request.return_value = mock_response
+
+        # Mock callback to raise exception
+        mock_session.post.side_effect = Exception("Callback error")
+
+        mocker.patch(
+            "scheduler_service.service.request.get_session", return_value=mock_session
+        )
+
+        from scheduler_service.service.request import ping
+
+        await ping.fn(1)
+
+        # Should have attempted to send callback
+        mock_session.post.assert_called_once()

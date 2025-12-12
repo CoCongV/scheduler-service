@@ -1,9 +1,10 @@
 import os
-import dramatiq # Import for debugging
+
 
 import pytest
 from dramatiq import Worker
 from httpx import AsyncClient
+from tortoise import Tortoise
 
 # 必须在导入任何 scheduler_service 模块之前设置此环境变量
 os.environ["UNIT_TESTS"] = "1"
@@ -28,11 +29,7 @@ def stub_broker():
     """使用内存broker进行Dramatiq测试"""
     # 现在 broker.py 会因为 UNIT_TESTS=1 返回 StubBroker
     from scheduler_service import broker
-    
-    print(f"\n[DEBUG] conftest.stub_broker fixture called")
-    print(f"[DEBUG] Imported 'broker' from scheduler_service: {broker}")
-    print(f"[DEBUG] dramatiq.get_broker() returns: {dramatiq.get_broker()}")
-    
+
     broker.flush_all()
     return broker
 
@@ -72,7 +69,7 @@ async def app():
 
     # 手动初始化数据库，确保在测试开始前数据库已就绪
     await setup_dbs(app)
-
+    await Tortoise.generate_schemas()
     # Dramatiq setup - this initializes the global scheduler variable
     setup_dramatiq(app.config)
 
@@ -84,13 +81,13 @@ async def app():
 
     # Shut down APScheduler
     if scheduler and scheduler.running:
-        scheduler.shutdown(wait=False) # Faster shutdown for tests
+        scheduler.shutdown(wait=False)  # Faster shutdown for tests
 
     # 关闭数据库连接
     await close_dbs()
 
     # 关闭Dramatiq连接
-    close_dramatiq() # This handles Dramatiq broker shutdown
+    close_dramatiq()  # This handles Dramatiq broker shutdown
 
     # 清理所有测试数据库文件
     if os.path.exists("test.db"):
@@ -102,7 +99,7 @@ async def app():
 
 
 @pytest.fixture
-async def user(app): # 依赖app确保DB已初始化
+async def user(app):  # 依赖app确保DB已初始化
     """创建测试用户"""
     password_hash = User.hash_password("password")
     user = await User.create(

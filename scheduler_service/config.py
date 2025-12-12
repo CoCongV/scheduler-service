@@ -32,6 +32,12 @@ class Config:
     LOG_LEVEL = logging.DEBUG
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+    # Default Admin User Configuration (Hardcoded for development convenience)
+    DEFAULT_ADMIN_NAME = "admin"
+    DEFAULT_ADMIN_EMAIL = "admin@admin.com"
+    DEFAULT_ADMIN_PASSWORD = "admin"
+
+
     @classmethod
     def load(cls):
         """Load config from TOML and update class attributes (for backward compatibility)."""

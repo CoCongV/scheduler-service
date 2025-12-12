@@ -1,27 +1,26 @@
-from datetime import datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-# 定义有效的HTTP方法
+# Define valid HTTP methods
 VALID_HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
 
 
 class RequestTaskCreate(BaseModel):
-    """请求任务创建模型"""
+    """Request task creation model"""
 
     name: str
-    start_time: float
-    header: Optional[dict] = None  # HTTP请求头字段
+    start_time: Optional[float] = None
+    header: Optional[dict] = None  # HTTP request header fields
     method: Optional[
         Literal["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
-    ] = "GET"  # HTTP请求方法
+    ] = "GET"  # HTTP request method
     request_url: str
     callback_url: Optional[str] = None
     callback_id: Optional[str] = None
-    callback_token: Optional[str] = None  # 用于callback_url登录的token
-    body: Optional[dict] = None  # HTTP请求体
-    cron: Optional[str] = None  # cron 表达式
+    callback_token: Optional[str] = None  # Token for callback_url login
+    body: Optional[dict] = None  # HTTP request body
+    cron: Optional[str] = None  # cron expression
 
     @field_validator("method")
     @classmethod
@@ -34,23 +33,30 @@ class RequestTaskCreate(BaseModel):
 
 
 class RequestTaskResponse(BaseModel):
-    """请求任务响应模型"""
+    """Request task response model"""
 
     id: int
     name: str
     user_id: int
-    start_time: datetime
+    start_time: Optional[int]
     request_url: str
     callback_url: Optional[str]
     callback_id: Optional[str] = None
-    callback_token: Optional[str] = None  # 用于callback_url登录的token
-    header: Optional[dict] = None  # HTTP请求头字段
-    method: str = "GET"  # HTTP请求方法
-    body: Optional[dict] = None  # HTTP请求体
-    cron: Optional[str] = None  # cron 表达式
-    cron_count: int = 0  # cron 任务已经循环的次数
+    callback_token: Optional[str] = None  # Token for callback_url login
+    header: Optional[dict] = None  # HTTP request header fields
+    method: str = "GET"  # HTTP request method
+    body: Optional[dict] = None  # HTTP request body
+    cron: Optional[str] = None  # cron expression
+    cron_count: int = 0  # Number of times cron task has looped
     job_id: Optional[str] = None  # APScheduler Job ID
     status: str = "PENDING"
     error_message: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DashboardStats(BaseModel):
+    """Dashboard statistics model"""
+
+    total_tasks: int
+    status_counts: dict[str, int]
