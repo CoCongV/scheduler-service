@@ -423,6 +423,8 @@ class TestDramatiqActors:
         mock_task.body = None
         mock_task.header = {}
         mock_task.callback_url = "http://callback.com/status"
+        mock_task.callback_id = None
+        mock_task.callback_token = None
         mock_task.status = TaskStatus.PENDING
         mock_task.error_message = None
 
@@ -472,6 +474,8 @@ class TestDramatiqActors:
         )
         mock_task.header = {"Content-Type": "application/json"}
         mock_task.callback_url = "http://callback.com/status"
+        mock_task.callback_id = None
+        mock_task.callback_token = None
 
         with patch(
             "scheduler_service.models.RequestTask.get_or_none",
@@ -520,6 +524,7 @@ class TestDramatiqActors:
                         "exception": None,
                         "status": RequestStatus.COMPLETE,
                     },
+                    headers={},
                 )
 
     async def test_trigger_cron_task(self, mocker):
@@ -576,6 +581,8 @@ class TestDramatiqActors:
         mock_task.callback_url = "http://callback.com"
         mock_task.body = None
         mock_task.header = {}
+        mock_task.callback_id = None
+        mock_task.callback_token = None
         # Mock status and error_message fields
         mock_task.status = TaskStatus.PENDING
         mock_task.error_message = None
