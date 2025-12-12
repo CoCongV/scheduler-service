@@ -1,24 +1,24 @@
+import asyncio
 import os
 import urllib.parse
-import asyncio
 from typing import Optional
+
 import dramatiq
 import redis
+from apscheduler.jobstores.memory import MemoryJobStore
+from apscheduler.jobstores.redis import RedisJobStore
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from dramatiq.asyncio import get_event_loop_thread
 from dramatiq.brokers.redis import RedisBroker
 from dramatiq.brokers.stub import StubBroker
 from dramatiq.middleware import AsyncIO, Middleware
-from dramatiq.asyncio import get_event_loop_thread
 from dramatiq_abort import Abortable
 from dramatiq_abort.backends.redis import RedisBackend
 from tortoise import Tortoise
 from tortoise.exceptions import ConfigurationError
 
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.jobstores.redis import RedisJobStore
-from apscheduler.jobstores.memory import MemoryJobStore
-from scheduler_service.utils.logger import logger
 from scheduler_service.config import Config
+from scheduler_service.utils.logger import logger
 
 
 # --- Helper Functions ---
@@ -31,15 +31,15 @@ def _get_redis_job_store(redis_url: str) -> RedisJobStore:
         url_parts = urllib.parse.urlparse(redis_url)
 
         return RedisJobStore(
-            jobs_key='apscheduler.jobs',
-            run_times_key='apscheduler.run_times',
-            host=url_parts.hostname or 'localhost',
+            jobs_key="apscheduler.jobs",
+            run_times_key="apscheduler.run_times",
+            host=url_parts.hostname or "localhost",
             port=url_parts.port or 6379,
-            db=int(url_parts.path.lstrip('/')) if url_parts.path else 0,
-            password=url_parts.password
+            db=int(url_parts.path.lstrip("/")) if url_parts.path else 0,
+            password=url_parts.password,
         )
     except Exception:
-        return RedisJobStore(host='localhost', port=6379)
+        return RedisJobStore(host="localhost", port=6379)
 
 
 class TortoiseMiddleware(Middleware):
@@ -61,7 +61,8 @@ class TortoiseMiddleware(Middleware):
 
             # Initialize Tortoise on the AsyncIO loop
             future = asyncio.run_coroutine_threadsafe(
-                setup_tortoise(Config.to_dict()), loop)
+                setup_tortoise(Config.to_dict()), loop
+            )
             future.result(timeout=10)
             logger.info("Tortoise ORM initialized on AsyncIO loop.")
 
@@ -74,8 +75,7 @@ class TortoiseMiddleware(Middleware):
             if event_loop_thread and event_loop_thread.loop:
                 loop = event_loop_thread.loop
                 if loop.is_running():
-                    future = asyncio.run_coroutine_threadsafe(
-                        close_tortoise(), loop)
+                    future = asyncio.run_coroutine_threadsafe(close_tortoise(), loop)
                     future.result(timeout=5)
             logger.info("Tortoise ORM connections closed.")
         except Exception as e:
@@ -102,7 +102,8 @@ def generate_broker(config):
         # Note: `config` here can be the Config class or a dict/object with .REDIS_URL or .get("REDIS_URL")
         # We handle both for robustness
         redis_url = getattr(config, "REDIS_URL", None) or (
-            config.get("REDIS_URL") if isinstance(config, dict) else None)
+            config.get("REDIS_URL") if isinstance(config, dict) else None
+        )
 
         if not redis_url:
             # Fallback or error
@@ -139,7 +140,8 @@ def get_scheduler() -> AsyncIOScheduler:
     """Get APScheduler instance, raise error if not initialized"""
     if scheduler is None:
         raise RuntimeError(
-            "APScheduler has not been initialized. Call setup_dramatiq first.")
+            "APScheduler has not been initialized. Call setup_dramatiq first."
+        )
     return scheduler
 
 
@@ -153,9 +155,8 @@ def setup_dramatiq(config):
 
     if os.getenv("UNIT_TESTS") == "1":
         # --- [Test Mode] ---
-        jobstores = {'default': MemoryJobStore()}
-        scheduler = AsyncIOScheduler(
-            jobstores=jobstores, timezone="Asia/Shanghai")
+        jobstores = {"default": MemoryJobStore()}
+        scheduler = AsyncIOScheduler(jobstores=jobstores, timezone="Asia/Shanghai")
 
     else:
         # --- [Production Mode] ---
@@ -165,9 +166,8 @@ def setup_dramatiq(config):
 
         redis_url = config.get("REDIS_URL")
         if redis_url:
-            jobstores = {'default': _get_redis_job_store(redis_url)}
-            scheduler = AsyncIOScheduler(
-                jobstores=jobstores, timezone="Asia/Shanghai")
+            jobstores = {"default": _get_redis_job_store(redis_url)}
+            scheduler = AsyncIOScheduler(jobstores=jobstores, timezone="Asia/Shanghai")
         else:
             scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
 
@@ -185,16 +185,13 @@ def close_dramatiq():
 
 async def setup_tortoise(config):
     """Initialize Tortoise-ORM"""
-    db_url = config.get('PG_URL') or config.get(
-        'POSTGRES_URL') or config.get('DB_URL')
+    db_url = config.get("PG_URL")
     if not db_url:
         raise ValueError(
-            "Database URL not configured, please set PG_URL, POSTGRES_URL or DB_URL environment variable")
+            "Database URL not configured, please set PG_URL, POSTGRES_URL or DB_URL environment variable"
+        )
 
-    await Tortoise.init(
-        db_url=db_url,
-        modules={'models': ['scheduler_service.models']}
-    )
+    await Tortoise.init(db_url=db_url, modules={"models": ["scheduler_service.models"]})
 
 
 async def close_tortoise():

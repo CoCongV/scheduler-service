@@ -117,15 +117,9 @@ async def setup_dbs(app: FastAPI):
     """Initialize all database connections"""
 
     # Get database URL, supports multiple config keys
-    db_url = (
-        app.config.get("POSTGRES_URL")
-        or app.config.get("PG_URL")
-        or app.config.get("DB_URL")
-    )
+    db_url = app.config.get("PG_URL")
     if not db_url:
-        raise ValueError(
-            "PostgreSQL database URL not configured, please set POSTGRES_URL, PG_URL or DB_URL"
-        )
+        raise ValueError("PostgreSQL database URL not configured, please set PG_URL")
 
     # PostgreSQL - Tortoise ORM (Use official implementation)
     await Tortoise.init(
