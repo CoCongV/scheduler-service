@@ -4,7 +4,8 @@ from tortoise.models import Model
 from scheduler_service.constants import TaskStatus
 
 # Define valid HTTP methods list
-VALID_HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+VALID_HTTP_METHODS = ["GET", "POST", "PUT",
+                      "DELETE", "PATCH", "HEAD", "OPTIONS"]
 
 
 class RequestTask(Model):
@@ -20,9 +21,11 @@ class RequestTask(Model):
         max_length=64, null=True
     )  # Token for callback_url login
     header = fields.JSONField(null=True)  # HTTP request header fields
-    method = fields.CharField(max_length=10, default="GET")  # HTTP request method
+    method = fields.CharField(
+        max_length=10, default="GET")  # HTTP request method
     body = fields.JSONField(default=dict)
-    message_id = fields.CharField(max_length=64, null=True)  # Dramatiq message ID
+    message_id = fields.CharField(
+        max_length=64, null=True)  # Dramatiq message ID
     cron = fields.CharField(max_length=64, null=True)  # cron expression
     # Number of times cron task has looped
     cron_count = fields.IntField(default=0)
@@ -30,6 +33,8 @@ class RequestTask(Model):
     status = fields.CharField(max_length=20, default=TaskStatus.PENDING)
     # Error message when task execution fails
     error_message = fields.TextField(null=True)
+    # Response data from the task execution
+    response = fields.JSONField(null=True)
 
     # Define foreign key relationship with User
     user = fields.ForeignKeyField(
@@ -84,4 +89,5 @@ class RequestTask(Model):
             "job_id": self.job_id,
             "status": self.status,
             "error_message": self.error_message,
+            "response": self.response
         }

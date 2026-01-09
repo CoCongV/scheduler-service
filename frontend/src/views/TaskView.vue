@@ -109,6 +109,21 @@ const columns: DataTableColumns<Task> = [
     }
   },
   {
+    title: '响应',
+    key: 'response',
+    render(row) {
+      if (!row.response) return '-'
+      return h(
+        NButton,
+        {
+          size: 'small',
+          onClick: () => handleViewResponse(row)
+        },
+        { default: () => '查看' }
+      )
+    }
+  },
+  {
     title: '操作',
     key: 'actions',
     width: 200,
@@ -206,6 +221,14 @@ async function handleDelete(id: number) {
     console.error(error)
     // Error handled by interceptor mostly, but we can add specific handling if needed
   }
+}
+
+const showResponseModal = ref(false)
+const currentResponse = ref('')
+
+function handleViewResponse(task: Task) {
+  currentResponse.value = JSON.stringify(task.response, null, 2)
+  showResponseModal.value = true
 }
 
 async function handleSaveTask() {
@@ -392,6 +415,15 @@ onMounted(() => {
         <n-button @click="showModal = false">取消</n-button>
         <n-button type="primary" :loading="loading" @click="handleSaveTask">保存</n-button>
       </template>
+    </n-modal>
+
+    <n-modal v-model:show="showResponseModal" preset="card" title="任务响应" style="width: 600px">
+      <n-input
+        v-model:value="currentResponse"
+        type="textarea"
+        :autosize="{ minRows: 5, maxRows: 20 }"
+        readonly
+      />
     </n-modal>
   </n-space>
 </template>

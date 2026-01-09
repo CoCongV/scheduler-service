@@ -14,6 +14,7 @@ export interface Task {
   body?: Record<string, any>
   callback_url?: string
   callback_token?: string
+  response?: Record<string, any>
 }
 
 export interface CreateTaskParams {

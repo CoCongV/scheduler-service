@@ -30,6 +30,12 @@ const routes = [
         name: 'Profile',
         component: () => import('../views/Profile.vue'),
         meta: { title: '个人设置' }
+      },
+      {
+        path: 'apikeys',
+        name: 'ApiKeys',
+        component: () => import('../views/ApiKey.vue'),
+        meta: { title: 'API Keys', requiresAuth: true }
       }
     ]
   }

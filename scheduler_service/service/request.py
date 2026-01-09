@@ -75,8 +75,10 @@ async def ping(task_id):
 
         # Read response content
         content = await response.aread()
+        response_text = content.decode('utf-8')
+
         callback_data = {
-            "response": content.decode("utf-8"),
+            "response": response_text,
             "code": response.status_code,
             "exception": None,
             "status": RequestStatus.COMPLETE,
@@ -88,6 +90,12 @@ async def ping(task_id):
 
         # Update status to completed
         task.status = TaskStatus.COMPLETED
+        task.response = {
+            'status_code': response.status_code,
+            'body': response_text,
+            'headers': dict(response.headers)
+        }
+        logger.info(task.response)
         await task.save()
 
     except Exception as e:
@@ -102,6 +110,9 @@ async def ping(task_id):
         # Update status to failed, and record error message
         task.status = TaskStatus.FAILED
         task.error_message = str(e)
+        task.response = {
+            'error': str(e)
+        }
         await task.save()
 
     # Send callback (regardless of success or failure, as long as there is a callback URL and callback data)
@@ -113,7 +124,8 @@ async def ping(task_id):
 
             await session.post(task.callback_url, json=callback_data, headers=headers)
         except Exception as e:
-            logger.error("Error sending callback to %s: %s", task.callback_url, e)
+            logger.error("Error sending callback to %s: %s",
+                         task.callback_url, e)
 
 
 # Register startup and shutdown hooks

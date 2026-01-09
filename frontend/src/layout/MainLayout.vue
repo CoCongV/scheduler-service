@@ -15,7 +15,8 @@ import {
 import type { MenuOption } from 'naive-ui'
 import {
   SpeedometerOutline as DashboardIcon,
-  ClipboardOutline as TasksIcon
+  ClipboardOutline as TasksIcon,
+  KeyOutline as ApiKeyIcon
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -33,6 +34,12 @@ const menuOptions: MenuOption[] = [
     key: 'tasks',
     icon: renderIcon(TasksIcon),
     name: 'Tasks' // Add name property for router push
+  },
+  {
+    label: 'API Keys',
+    key: 'apikeys',
+    icon: renderIcon(ApiKeyIcon),
+    name: 'ApiKeys'
   }
 ]
 
